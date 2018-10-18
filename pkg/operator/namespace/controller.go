@@ -29,7 +29,7 @@ var Resource = opkit.CustomResource{
 	Name:    "namespace",
 	Plural:  "namespaces",
 	Version: "v1",
-	Kind:    reflect.TypeOf(v1.Service{}).Name(),
+	Kind:    reflect.TypeOf(v1.Namespace{}).Name(),
 }
 
 type NamespaceController struct {
@@ -47,18 +47,18 @@ func (c *NamespaceController) StartWatch(namespace string, stopCh chan struct{})
 		DeleteFunc: c.onDelete,
 	}
 
-	glog.Infof("start watching namespace resources")
+	glog.Infof("Start watching namespace resources.")
 	watcher := opkit.NewWatcher(Resource, namespace, resourceHandlerFuncs, c.ctx.Clientset.CoreV1().RESTClient())
-	go watcher.Watch(&v1.Service{}, stopCh)
+	go watcher.Watch(&v1.Namespace{}, stopCh)
 	return nil
 }
 
 func (c *NamespaceController) onAdd(obj interface{}) {
-	glog.Infof("Namespace resource onAdd: %s", obj.(*v1.Namespace).Name)
+	glog.Infof("Namespace resource onAdd: %s.", obj.(*v1.Namespace).Name)
 }
 
 func (c *NamespaceController) onUpdate(oldObj, newObj interface{}) {
-	glog.Infof("Namespace resource onUpdate: %s", newObj.(*v1.Namespace).Name)
+	glog.Infof("Namespace resource onUpdate: %s.", newObj.(*v1.Namespace).Name)
 }
 
 func (c *NamespaceController) onDelete(obj interface{}) {

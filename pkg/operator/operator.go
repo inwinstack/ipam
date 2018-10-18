@@ -54,7 +54,7 @@ func NewMainOperator(flag *Flag) *Operator {
 }
 
 func (o *Operator) Initialize() error {
-	glog.V(2).Info("initialize the operator resources.")
+	glog.V(2).Info("Initialize the operator resources.")
 
 	ctx, clientset, err := o.initContextAndClient()
 	if err != nil {
@@ -67,26 +67,26 @@ func (o *Operator) Initialize() error {
 }
 
 func (o *Operator) initContextAndClient() (*opkit.Context, ipamclientset.IpamV1alpha1Interface, error) {
-	glog.V(2).Info("initialize the operator context and client.")
+	glog.V(2).Info("Initialize the operator context and client.")
 
 	config, err := k8sutil.GetRestConfig(o.flag.Kubeconfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get Kubernetes config. %+v", err)
+		return nil, nil, fmt.Errorf("Failed to get Kubernetes config. %+v", err)
 	}
 
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get Kubernetes client. %+v", err)
+		return nil, nil, fmt.Errorf("Failed to get Kubernetes client. %+v", err)
 	}
 
 	extensionsclient, err := apiextensionsclient.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create Kubernetes API extension clientset. %+v", err)
+		return nil, nil, fmt.Errorf("Failed to create Kubernetes API extension clientset. %+v", err)
 	}
 
 	ipamclient, err := ipamclientset.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create pan-operator clientset. %+v", err)
+		return nil, nil, fmt.Errorf("Failed to create pan-operator clientset. %+v", err)
 	}
 
 	ctx := &opkit.Context{
@@ -99,7 +99,7 @@ func (o *Operator) initContextAndClient() (*opkit.Context, ipamclientset.IpamV1a
 }
 
 func (o *Operator) initResources() error {
-	glog.V(2).Info("initialize the CRD resources.")
+	glog.V(2).Info("Initialize the CRD resources.")
 
 	ctx := opkit.Context{
 		Clientset:             o.ctx.Clientset,
@@ -109,7 +109,7 @@ func (o *Operator) initResources() error {
 	}
 	err := opkit.CreateCustomResources(ctx, o.resources)
 	if err != nil {
-		return fmt.Errorf("failed to create custom resource. %+v", err)
+		return fmt.Errorf("Failed to create custom resource. %+v", err)
 	}
 	return nil
 }
@@ -120,7 +120,7 @@ func (o *Operator) Run() error {
 		if err == nil {
 			break
 		}
-		glog.Errorf("failed to init resources. %+v. retrying...", err)
+		glog.Errorf("Failed to init resources. %+v. retrying...", err)
 		<-time.After(InitRetryDelay)
 	}
 

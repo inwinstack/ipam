@@ -29,12 +29,12 @@ func main() {
 	f := &operator.Flag{Kubeconfig: kubeconfig}
 	op := operator.NewMainOperator(f)
 	if err := op.Initialize(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error initing operator instance: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error initing operator instance: %s.\n", err)
 		os.Exit(1)
 	}
 
 	if err := op.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error serving operator instance: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error serving operator instance: %s.\n", err)
 		os.Exit(1)
 	}
 }

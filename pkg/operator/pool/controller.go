@@ -57,7 +57,7 @@ func (c *PoolController) StartWatch(namespace string, stopCh chan struct{}) erro
 		DeleteFunc: c.onDelete,
 	}
 
-	glog.Infof("start watching pool resources")
+	glog.Infof("Start watching pool resources.")
 	watcher := opkit.NewWatcher(Resource, namespace, resourceHandlerFuncs, c.clientset.RESTClient())
 	go watcher.Watch(&ipamalphav1.Pool{}, stopCh)
 	return nil
