@@ -17,5 +17,5 @@ limitations under the License.
 // +k8s:deepcopy-gen=package,register
 
 // Package v1alpha1 is the v1alpha1 version of the API.
-// +groupName=ipam.io
+// +groupName=inwinstack.com
 package v1alpha1

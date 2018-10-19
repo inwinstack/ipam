@@ -1,4 +1,4 @@
-apiVersion: ipam.io/v1alpha1
+apiVersion: inwinstack.com/v1alpha1
 kind: Pool
 metadata:
   name: my-ip-pool

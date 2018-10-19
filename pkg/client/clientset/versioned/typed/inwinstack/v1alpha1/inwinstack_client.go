@@ -18,28 +18,28 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/inwinstack/ipam-operator/pkg/apis/ipam/v1alpha1"
+	v1alpha1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1alpha1"
 	"github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/scheme"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
 
-type IpamV1alpha1Interface interface {
+type InwinstackV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	PoolsGetter
 }
 
-// IpamV1alpha1Client is used to interact with features provided by the ipam.io group.
-type IpamV1alpha1Client struct {
+// InwinstackV1alpha1Client is used to interact with features provided by the inwinstack.com group.
+type InwinstackV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *IpamV1alpha1Client) Pools(namespace string) PoolInterface {
+func (c *InwinstackV1alpha1Client) Pools(namespace string) PoolInterface {
 	return newPools(c, namespace)
 }
 
-// NewForConfig creates a new IpamV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*IpamV1alpha1Client, error) {
+// NewForConfig creates a new InwinstackV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*InwinstackV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -48,12 +48,12 @@ func NewForConfig(c *rest.Config) (*IpamV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &IpamV1alpha1Client{client}, nil
+	return &InwinstackV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new IpamV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new InwinstackV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *IpamV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *InwinstackV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -61,9 +61,9 @@ func NewForConfigOrDie(c *rest.Config) *IpamV1alpha1Client {
 	return client
 }
 
-// New creates a new IpamV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *IpamV1alpha1Client {
-	return &IpamV1alpha1Client{c}
+// New creates a new InwinstackV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *InwinstackV1alpha1Client {
+	return &InwinstackV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -81,7 +81,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *IpamV1alpha1Client) RESTClient() rest.Interface {
+func (c *InwinstackV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

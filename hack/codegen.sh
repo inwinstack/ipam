@@ -23,6 +23,6 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 ./vendor/k8s.io/code-ge
 ${CODEGEN_PKG}/generate-groups.sh all \
   github.com/inwinstack/ipam-operator/pkg/client \
   github.com/inwinstack/ipam-operator/pkg/apis \
-  "ipam:v1alpha1" \
+  "inwinstack:v1alpha1" \
   --output-base "$(dirname ${BASH_SOURCE})/../../../../" \
   --go-header-file ${SCRIPT_ROOT}/hack/boilerplate.go.txt

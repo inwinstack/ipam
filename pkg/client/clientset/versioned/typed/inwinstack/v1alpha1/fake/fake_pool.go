@@ -18,7 +18,7 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha1 "github.com/inwinstack/ipam-operator/pkg/apis/ipam/v1alpha1"
+	v1alpha1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -29,13 +29,13 @@ import (
 
 // FakePools implements PoolInterface
 type FakePools struct {
-	Fake *FakeIpamV1alpha1
+	Fake *FakeInwinstackV1alpha1
 	ns   string
 }
 
-var poolsResource = schema.GroupVersionResource{Group: "ipam.io", Version: "v1alpha1", Resource: "pools"}
+var poolsResource = schema.GroupVersionResource{Group: "inwinstack.com", Version: "v1alpha1", Resource: "pools"}
 
-var poolsKind = schema.GroupVersionKind{Group: "ipam.io", Version: "v1alpha1", Kind: "Pool"}
+var poolsKind = schema.GroupVersionKind{Group: "inwinstack.com", Version: "v1alpha1", Kind: "Pool"}
 
 // Get takes name of the pool, and returns the corresponding pool object, and an error if there is any.
 func (c *FakePools) Get(name string, options v1.GetOptions) (result *v1alpha1.Pool, err error) {
