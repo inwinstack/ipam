@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	ipamclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/ipam/v1alpha1"
+	inwinclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1alpha1"
 	"github.com/inwinstack/ipam-operator/pkg/operator/namespace"
 	"github.com/inwinstack/ipam-operator/pkg/operator/pool"
 	"github.com/inwinstack/ipam-operator/pkg/util/k8sutil"
@@ -66,7 +66,7 @@ func (o *Operator) Initialize() error {
 	return nil
 }
 
-func (o *Operator) initContextAndClient() (*opkit.Context, ipamclientset.IpamV1alpha1Interface, error) {
+func (o *Operator) initContextAndClient() (*opkit.Context, inwinclientset.InwinstackV1alpha1Interface, error) {
 	glog.V(2).Info("Initialize the operator context and client.")
 
 	config, err := k8sutil.GetRestConfig(o.flag.Kubeconfig)
@@ -84,7 +84,7 @@ func (o *Operator) initContextAndClient() (*opkit.Context, ipamclientset.IpamV1a
 		return nil, nil, fmt.Errorf("Failed to create Kubernetes API extension clientset. %+v", err)
 	}
 
-	ipamclient, err := ipamclientset.NewForConfig(config)
+	inwinclient, err := inwinclientset.NewForConfig(config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to create pan-operator clientset. %+v", err)
 	}
@@ -95,7 +95,7 @@ func (o *Operator) initContextAndClient() (*opkit.Context, ipamclientset.IpamV1a
 		Interval:              Interval,
 		Timeout:               Timeout,
 	}
-	return ctx, ipamclient, nil
+	return ctx, inwinclient, nil
 }
 
 func (o *Operator) initResources() error {

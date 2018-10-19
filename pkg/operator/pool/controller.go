@@ -20,8 +20,8 @@ import (
 	"reflect"
 
 	"github.com/golang/glog"
-	ipamalphav1 "github.com/inwinstack/ipam-operator/pkg/apis/ipam/v1alpha1"
-	ipamclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/ipam/v1alpha1"
+	inwinalphav1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1alpha1"
+	inwinclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1alpha1"
 	opkit "github.com/inwinstack/operator-kit"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
@@ -35,18 +35,18 @@ const (
 var Resource = opkit.CustomResource{
 	Name:    customResourceName,
 	Plural:  customResourceNamePlural,
-	Group:   ipamalphav1.CustomResourceGroup,
-	Version: ipamalphav1.Version,
+	Group:   inwinalphav1.CustomResourceGroup,
+	Version: inwinalphav1.Version,
 	Scope:   apiextensionsv1beta1.ClusterScoped,
-	Kind:    reflect.TypeOf(ipamalphav1.Pool{}).Name(),
+	Kind:    reflect.TypeOf(inwinalphav1.Pool{}).Name(),
 }
 
 type PoolController struct {
 	ctx       *opkit.Context
-	clientset ipamclientset.IpamV1alpha1Interface
+	clientset inwinclientset.InwinstackV1alpha1Interface
 }
 
-func NewController(ctx *opkit.Context, clientset ipamclientset.IpamV1alpha1Interface) *PoolController {
+func NewController(ctx *opkit.Context, clientset inwinclientset.InwinstackV1alpha1Interface) *PoolController {
 	return &PoolController{ctx: ctx, clientset: clientset}
 }
 
@@ -59,18 +59,18 @@ func (c *PoolController) StartWatch(namespace string, stopCh chan struct{}) erro
 
 	glog.Infof("Start watching pool resources.")
 	watcher := opkit.NewWatcher(Resource, namespace, resourceHandlerFuncs, c.clientset.RESTClient())
-	go watcher.Watch(&ipamalphav1.Pool{}, stopCh)
+	go watcher.Watch(&inwinalphav1.Pool{}, stopCh)
 	return nil
 }
 
 func (c *PoolController) onAdd(obj interface{}) {
-	glog.Infof("Pool resource onAdd: %s.", obj.(*ipamalphav1.Pool).Name)
+	glog.Infof("Pool resource onAdd: %s.", obj.(*inwinalphav1.Pool).Name)
 }
 
 func (c *PoolController) onUpdate(oldObj, newObj interface{}) {
-	glog.Infof("Pool resource onUpdate: %s.", newObj.(*ipamalphav1.Pool).Name)
+	glog.Infof("Pool resource onUpdate: %s.", newObj.(*inwinalphav1.Pool).Name)
 }
 
 func (c *PoolController) onDelete(obj interface{}) {
-	glog.Infof("Pool resource onDelete: %s.", obj.(*ipamalphav1.Pool).Name)
+	glog.Infof("Pool resource onDelete: %s.", obj.(*inwinalphav1.Pool).Name)
 }

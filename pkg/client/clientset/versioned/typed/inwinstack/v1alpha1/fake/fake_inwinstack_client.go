@@ -18,22 +18,22 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha1 "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/ipam/v1alpha1"
+	v1alpha1 "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeIpamV1alpha1 struct {
+type FakeInwinstackV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeIpamV1alpha1) Pools(namespace string) v1alpha1.PoolInterface {
+func (c *FakeInwinstackV1alpha1) Pools(namespace string) v1alpha1.PoolInterface {
 	return &FakePools{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeIpamV1alpha1) RESTClient() rest.Interface {
+func (c *FakeInwinstackV1alpha1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

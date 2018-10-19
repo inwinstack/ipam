@@ -18,7 +18,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/inwinstack/ipam-operator/pkg/apis/ipam/v1alpha1"
+	v1alpha1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1alpha1"
 	scheme "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -53,7 +53,7 @@ type pools struct {
 }
 
 // newPools returns a Pools
-func newPools(c *IpamV1alpha1Client, namespace string) *pools {
+func newPools(c *InwinstackV1alpha1Client, namespace string) *pools {
 	return &pools{
 		client: c.RESTClient(),
 		ns:     namespace,
