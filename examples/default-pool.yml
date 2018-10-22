@@ -1,0 +1,11 @@
+apiVersion: inwinstack.com/v1alpha1
+kind: IPPool
+metadata:
+  name: default-pool
+spec:
+  address: 172.22.132.200-172.22.132.230
+  ignoreNamespaces:
+  - kube-system
+  - kube-public
+  - default
+  

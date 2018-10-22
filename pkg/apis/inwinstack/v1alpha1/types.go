@@ -22,34 +22,39 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// PoolList is a list of Pool.
-type PoolList struct {
+// IPPoolList is a list of Pool.
+type IPPoolList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []Pool `json:"items"`
+	Items []IPPool `json:"items"`
 }
 
 // +genclient
+// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Pool represents a Kubernetes Pool Custom Resource.
+// IPPool represents a Kubernetes IPPool Custom Resource.
 // The Pool will be used as IP pools.
-type Pool struct {
+type IPPool struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   PoolSpec   `json:"spec"`
-	Status PoolStatus `json:"status,omitempty"`
+	Spec   IPPoolSpec   `json:"spec"`
+	Status IPPoolStatus `json:"status,omitempty"`
 }
 
-// PoolSpec is the spec for a Pool resource.
-type PoolSpec struct {
-	IPRange string `json:"ipRange"`
+// IPPoolSpec is the spec for a Pool resource.
+type IPPoolSpec struct {
+	Address          string   `json:"address"`
+	IgnoreNamespaces []string `json:"ignoreNamespaces"`
 }
 
-// PoolStatus represents the current state of a resource.
-type PoolStatus struct {
+// IPPoolStatus represents the current state of a resource.
+type IPPoolStatus struct {
 	Message        string      `json:"message"`
 	LastUpdateTime metav1.Time `json:"lastUpdateTime"`
+	AllocatedIPs   []string    `json:"allocatedIPs"`
+	AllocatableIPs []string    `json:"allocatableIPs"`
+	Capacity       int         `json:"capacity"`
 }

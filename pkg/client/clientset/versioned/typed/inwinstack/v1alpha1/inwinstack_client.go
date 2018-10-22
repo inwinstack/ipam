@@ -26,7 +26,7 @@ import (
 
 type InwinstackV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	PoolsGetter
+	IPPoolsGetter
 }
 
 // InwinstackV1alpha1Client is used to interact with features provided by the inwinstack.com group.
@@ -34,8 +34,8 @@ type InwinstackV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *InwinstackV1alpha1Client) Pools(namespace string) PoolInterface {
-	return newPools(c, namespace)
+func (c *InwinstackV1alpha1Client) IPPools() IPPoolInterface {
+	return newIPPools(c)
 }
 
 // NewForConfig creates a new InwinstackV1alpha1Client for the given config.
