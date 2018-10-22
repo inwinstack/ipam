@@ -27,8 +27,8 @@ type FakeInwinstackV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeInwinstackV1alpha1) Pools(namespace string) v1alpha1.PoolInterface {
-	return &FakePools{c, namespace}
+func (c *FakeInwinstackV1alpha1) IPPools() v1alpha1.IPPoolInterface {
+	return &FakeIPPools{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

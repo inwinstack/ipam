@@ -1,7 +1,0 @@
-apiVersion: inwinstack.com/v1alpha1
-kind: Pool
-metadata:
-  name: my-ip-pool
-spec:
-  ipRange: 172.22.132.50-172.22.132.60
-  

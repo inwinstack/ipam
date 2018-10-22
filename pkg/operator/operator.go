@@ -46,6 +46,12 @@ type Operator struct {
 	flag      *Flag
 }
 
+const (
+	initRetryDelay = 10 * time.Second
+	interval       = 500 * time.Millisecond
+	timeout        = 60 * time.Second
+)
+
 func NewMainOperator(flag *Flag) *Operator {
 	return &Operator{
 		resources: []opkit.CustomResource{pool.Resource},
@@ -60,7 +66,8 @@ func (o *Operator) Initialize() error {
 	if err != nil {
 		return err
 	}
-	o.namespace = namespace.NewController(ctx)
+
+	o.namespace = namespace.NewController(ctx, clientset)
 	o.pool = pool.NewController(ctx, clientset)
 	o.ctx = ctx
 	return nil
@@ -92,8 +99,8 @@ func (o *Operator) initContextAndClient() (*opkit.Context, inwinclientset.Inwins
 	ctx := &opkit.Context{
 		Clientset:             client,
 		APIExtensionClientset: extensionsclient,
-		Interval:              Interval,
-		Timeout:               Timeout,
+		Interval:              interval,
+		Timeout:               timeout,
 	}
 	return ctx, inwinclient, nil
 }
@@ -104,11 +111,11 @@ func (o *Operator) initResources() error {
 	ctx := opkit.Context{
 		Clientset:             o.ctx.Clientset,
 		APIExtensionClientset: o.ctx.APIExtensionClientset,
-		Interval:              Interval,
-		Timeout:               Timeout,
+		Interval:              interval,
+		Timeout:               timeout,
 	}
-	err := opkit.CreateCustomResources(ctx, o.resources)
-	if err != nil {
+
+	if err := opkit.CreateCustomResources(ctx, o.resources); err != nil {
 		return fmt.Errorf("Failed to create custom resource. %+v", err)
 	}
 	return nil
@@ -121,7 +128,7 @@ func (o *Operator) Run() error {
 			break
 		}
 		glog.Errorf("Failed to init resources. %+v. retrying...", err)
-		<-time.After(InitRetryDelay)
+		<-time.After(initRetryDelay)
 	}
 
 	signalChan := make(chan os.Signal, 1)
