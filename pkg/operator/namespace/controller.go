@@ -68,8 +68,10 @@ func (c *NamespaceController) onAdd(obj interface{}) {
 
 	c.makeAnnotations(ns)
 
-	if err := c.createOrDeleteIPs(ns); err != nil {
-		glog.Errorf("Failed to create IPs in %s namespace: %s.", ns.Name, err)
+	if ns.Status.Phase != v1.NamespaceTerminating {
+		if err := c.createOrDeleteIPs(ns); err != nil {
+			glog.Errorf("Failed to create IPs in %s namespace: %s.", ns.Name, err)
+		}
 	}
 
 	if _, err := c.ctx.Clientset.CoreV1().Namespaces().Update(ns); err != nil {
@@ -81,11 +83,14 @@ func (c *NamespaceController) onUpdate(oldObj, newObj interface{}) {
 	ns := newObj.(*v1.Namespace).DeepCopy()
 	glog.V(2).Infof("Received update on Namespace %s.", ns.Name)
 
-	if err := c.createOrDeleteIPs(ns); err != nil {
-		glog.Errorf("Failed to create IPs in %s namespace: %s.", ns.Name, err)
+	if ns.Status.Phase != v1.NamespaceTerminating {
+		if err := c.createOrDeleteIPs(ns); err != nil {
+			glog.Errorf("Failed to create IPs in %s namespace: %s.", ns.Name, err)
+		}
 	}
 
-	if ns.Annotations[constants.AllocateRefreshIPs] == "true" {
+	_, refresh := ns.Annotations[constants.AllocateRefreshIPs]
+	if refresh {
 		if err := c.syncIPsToAnnotations(ns); err != nil {
 			glog.Errorf("Failed to sync IPs in %s namespace: %s.", ns.Name, err)
 		}
@@ -112,10 +117,6 @@ func (c *NamespaceController) makeAnnotations(ns *v1.Namespace) {
 }
 
 func (c *NamespaceController) createOrDeleteIPs(ns *v1.Namespace) error {
-	if ns.Status.Phase == v1.NamespaceTerminating {
-		return nil
-	}
-
 	poolName := ns.Annotations[constants.AllocatePoolName]
 	pool, err := c.clientset.Pools().Get(poolName, metav1.GetOptions{})
 	if err != nil {
@@ -126,7 +127,7 @@ func (c *NamespaceController) createOrDeleteIPs(ns *v1.Namespace) error {
 		return nil
 	}
 
-	ips, err := c.clientset.IPs(ns.Namespace).List(metav1.ListOptions{})
+	ips, err := c.clientset.IPs(ns.Name).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -165,7 +166,7 @@ func (c *NamespaceController) syncIPsToAnnotations(ns *v1.Namespace) error {
 		return nil
 	}
 
-	ips, err := c.clientset.IPs(ns.Namespace).List(metav1.ListOptions{})
+	ips, err := c.clientset.IPs(ns.Name).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

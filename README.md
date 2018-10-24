@@ -16,7 +16,9 @@ Run the following command to debug:
 ```sh
 $ go run cmd/main.go \
     --kubeconfig $HOME/.kube/config \
-    --logtostderr 
+    --default-ignore-namespaces=kube-system,default,kube-public \
+    --default-address=192.168.100.0/24 \
+    --logtostderr -v=2
 ```
 
 ## Deploy in the cluster
