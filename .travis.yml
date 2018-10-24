@@ -20,7 +20,7 @@ script:
 - make
 after_success:
 - bash <(curl -s https://codecov.io/bash)
-- docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+- docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
 - make build_image
 - make push_image
 
