@@ -2,10 +2,6 @@
 required = ["k8s.io/code-generator/cmd/client-gen"]
 
 [[constraint]]
-  name = "k8s.io/kubernetes"
-  version = "=v1.11.0"
-
-[[constraint]]
   name = "k8s.io/api"
   version = "kubernetes-1.11.0"
 
@@ -18,16 +14,20 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
   version = "kubernetes-1.11.0"
 
 [[constraint]]
-  name = "k8s.io/apiserver"
-  version = "kubernetes-1.11.0"
-
-[[constraint]]
   name = "k8s.io/client-go"
   version = "v8.0.0"
 
 [[constraint]]
   name = "k8s.io/code-generator"
   version = "kubernetes-1.11.0"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.2.2"
+
+[[constraint]]
+  name = "github.com/inwinstack/operator-kit"
+  branch = "v1.11.0"
 
 [prune]
   go-tests = true
