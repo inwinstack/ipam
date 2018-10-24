@@ -12,8 +12,12 @@ script:
 - make dep
 - make test
 - make
-- bash <(curl -s https://codecov.io/bash)
 after_success:
-- docker login -u="$DOCKER_USER" -p="$DOCKER_PASSWORD"
-- make build_image
-- make push_image
+- bash <(curl -s https://codecov.io/bash)
+- |
+  if [[ "$TRAVIS_BRANCH" == "master" ]]; then
+    # Log into Docker Hub.
+    docker login -u="$DOCKER_USER" -p="$DOCKER_PASSWORD"
+    make build_image
+    make push_image
+  fi
