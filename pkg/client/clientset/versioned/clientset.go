@@ -18,7 +18,7 @@ limitations under the License.
 package versioned
 
 import (
-	inwinstackv1alpha1 "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1alpha1"
+	inwinstackv1 "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -26,27 +26,27 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	InwinstackV1alpha1() inwinstackv1alpha1.InwinstackV1alpha1Interface
+	InwinstackV1() inwinstackv1.InwinstackV1Interface
 	// Deprecated: please explicitly pick a version if possible.
-	Inwinstack() inwinstackv1alpha1.InwinstackV1alpha1Interface
+	Inwinstack() inwinstackv1.InwinstackV1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	inwinstackV1alpha1 *inwinstackv1alpha1.InwinstackV1alpha1Client
+	inwinstackV1 *inwinstackv1.InwinstackV1Client
 }
 
-// InwinstackV1alpha1 retrieves the InwinstackV1alpha1Client
-func (c *Clientset) InwinstackV1alpha1() inwinstackv1alpha1.InwinstackV1alpha1Interface {
-	return c.inwinstackV1alpha1
+// InwinstackV1 retrieves the InwinstackV1Client
+func (c *Clientset) InwinstackV1() inwinstackv1.InwinstackV1Interface {
+	return c.inwinstackV1
 }
 
 // Deprecated: Inwinstack retrieves the default version of InwinstackClient.
 // Please explicitly pick a version.
-func (c *Clientset) Inwinstack() inwinstackv1alpha1.InwinstackV1alpha1Interface {
-	return c.inwinstackV1alpha1
+func (c *Clientset) Inwinstack() inwinstackv1.InwinstackV1Interface {
+	return c.inwinstackV1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -65,7 +65,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.inwinstackV1alpha1, err = inwinstackv1alpha1.NewForConfig(&configShallowCopy)
+	cs.inwinstackV1, err = inwinstackv1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.inwinstackV1alpha1 = inwinstackv1alpha1.NewForConfigOrDie(c)
+	cs.inwinstackV1 = inwinstackv1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -90,7 +90,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.inwinstackV1alpha1 = inwinstackv1alpha1.New(c)
+	cs.inwinstackV1 = inwinstackv1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

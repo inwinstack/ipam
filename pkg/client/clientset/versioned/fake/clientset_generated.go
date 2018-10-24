@@ -19,8 +19,8 @@ package fake
 
 import (
 	clientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned"
-	inwinstackv1alpha1 "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1alpha1"
-	fakeinwinstackv1alpha1 "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1alpha1/fake"
+	inwinstackv1 "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1"
+	fakeinwinstackv1 "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -70,12 +70,12 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// InwinstackV1alpha1 retrieves the InwinstackV1alpha1Client
-func (c *Clientset) InwinstackV1alpha1() inwinstackv1alpha1.InwinstackV1alpha1Interface {
-	return &fakeinwinstackv1alpha1.FakeInwinstackV1alpha1{Fake: &c.Fake}
+// InwinstackV1 retrieves the InwinstackV1Client
+func (c *Clientset) InwinstackV1() inwinstackv1.InwinstackV1Interface {
+	return &fakeinwinstackv1.FakeInwinstackV1{Fake: &c.Fake}
 }
 
-// Inwinstack retrieves the InwinstackV1alpha1Client
-func (c *Clientset) Inwinstack() inwinstackv1alpha1.InwinstackV1alpha1Interface {
-	return &fakeinwinstackv1alpha1.FakeInwinstackV1alpha1{Fake: &c.Fake}
+// Inwinstack retrieves the InwinstackV1Client
+func (c *Clientset) Inwinstack() inwinstackv1.InwinstackV1Interface {
+	return &fakeinwinstackv1.FakeInwinstackV1{Fake: &c.Fake}
 }

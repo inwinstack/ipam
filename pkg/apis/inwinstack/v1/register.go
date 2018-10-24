@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1
 
 import (
 	inwinstack "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack"
@@ -25,7 +25,7 @@ import (
 
 const (
 	CustomResourceGroup = "inwinstack.com"
-	Version             = "v1alpha1"
+	Version             = "v1"
 )
 
 var (
@@ -54,8 +54,10 @@ func init() {
 // Adds the list of known types to the given scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&IPPoolList{},
-		&IPPool{},
+		&Pool{},
+		&PoolList{},
+		&IP{},
+		&IPList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

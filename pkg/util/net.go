@@ -62,14 +62,21 @@ func ParseCIDR(cidr string) ([]*net.IPNet, error) {
 func GetAllIP(ipnet *net.IPNet) []string {
 	var ips []string
 	for ip := ipnet.IP.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
-		if !isFilteIP(ip.String()) {
+		if !isFilterIP(ip.String()) {
 			ips = append(ips, ip.String())
 		}
 	}
 	return ips
 }
 
-func isFilteIP(v string) bool {
+func ParseIPs(v string) []string {
+	if v == "" {
+		return []string{}
+	}
+	return strings.Split(v, ",")
+}
+
+func isFilterIP(v string) bool {
 	ips := []string{"0", "1", "254", "255"}
 	fs := strings.SplitN(v, ".", 4)
 	for _, ip := range ips {

@@ -24,7 +24,8 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	inwinclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1alpha1"
+	inwinclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1"
+	"github.com/inwinstack/ipam-operator/pkg/operator/ip"
 	"github.com/inwinstack/ipam-operator/pkg/operator/namespace"
 	"github.com/inwinstack/ipam-operator/pkg/operator/pool"
 	"github.com/inwinstack/ipam-operator/pkg/util/k8sutil"
@@ -35,13 +36,16 @@ import (
 )
 
 type Flag struct {
-	Kubeconfig string
+	Kubeconfig       string
+	Address          string
+	IgnoreNamespaces []string
 }
 
 type Operator struct {
 	ctx       *opkit.Context
 	namespace *namespace.NamespaceController
 	pool      *pool.PoolController
+	ip        *ip.IPController
 	resources []opkit.CustomResource
 	flag      *Flag
 }
@@ -54,7 +58,7 @@ const (
 
 func NewMainOperator(flag *Flag) *Operator {
 	return &Operator{
-		resources: []opkit.CustomResource{pool.Resource},
+		resources: []opkit.CustomResource{pool.Resource, ip.Resource},
 		flag:      flag,
 	}
 }
@@ -69,11 +73,12 @@ func (o *Operator) Initialize() error {
 
 	o.namespace = namespace.NewController(ctx, clientset)
 	o.pool = pool.NewController(ctx, clientset)
+	o.ip = ip.NewController(ctx, clientset)
 	o.ctx = ctx
 	return nil
 }
 
-func (o *Operator) initContextAndClient() (*opkit.Context, inwinclientset.InwinstackV1alpha1Interface, error) {
+func (o *Operator) initContextAndClient() (*opkit.Context, inwinclientset.InwinstackV1Interface, error) {
 	glog.V(2).Info("Initialize the operator context and client.")
 
 	config, err := k8sutil.GetRestConfig(o.flag.Kubeconfig)
@@ -135,8 +140,16 @@ func (o *Operator) Run() error {
 	stopChan := make(chan struct{})
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
-	// start watching the resources
+	// start watching the custom resources
+	o.ip.StartWatch(v1.NamespaceAll, stopChan)
 	o.pool.StartWatch(v1.NamespaceAll, stopChan)
+
+	// init the custom resources
+	if err := o.pool.CreateDefaultPool(o.flag.Address, o.flag.IgnoreNamespaces); err != nil {
+		return fmt.Errorf("Failed to create default IP pool. %+v", err)
+	}
+
+	// start watching the resources
 	o.namespace.StartWatch(v1.NamespaceAll, stopChan)
 
 	for {

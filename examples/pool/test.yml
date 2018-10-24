@@ -1,0 +1,12 @@
+apiVersion: inwinstack.com/v1
+kind: Pool
+metadata:
+  name: test
+spec:
+  address: 172.22.132.200/30
+  ignoreNamespaceAnnotation: false
+  autoAssignToNamespace: true
+  ignoreNamespaces:
+  - kube-system
+  - kube-public
+  - default

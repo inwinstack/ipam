@@ -18,7 +18,7 @@ limitations under the License.
 package scheme
 
 import (
-	inwinstackv1alpha1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1alpha1"
+	inwinstackv1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -49,5 +49,5 @@ func init() {
 // After this, RawExtensions in Kubernetes types will serialize kube-aggregator types
 // correctly.
 func AddToScheme(scheme *runtime.Scheme) {
-	inwinstackv1alpha1.AddToScheme(scheme)
+	inwinstackv1.AddToScheme(scheme)
 }
