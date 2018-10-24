@@ -5,22 +5,15 @@ services:
 - docker
 go:
 - 1.11.x
-env:
-  global:
-  - secure: XkunkwjH5+hoOJSUbSOMQQYZ32FQzbl5luyCx4iY8VknLzX0nja8rm7TuVdgSkdGiy/aZSC5ZwYaCadDDG5c1ZN92uLKZJ3NSSBcU/i+kyZqBBt2lCzldJUFcDerXQnJAkh5fWMLUzD94z5Nv0CZ9R9+k6FygOzSUk6N9WkZrNhrwdspcVq83hMx97A1xNBm15UVC1qQ/ztmDx04Z1v8dFYhOUcG9zDncwMPJJd+OVG8/eEH18c7K3vYDkI69eoiPapqvskHxCxZNeEFtmIepH3iFazYalmyfz8rPVPemVztV8XWODLKh7YjuIVM9q+hD867cRTmXwfILzRKzHqe9rzMAmrd71Zk8O13kF5+WLleA+vQghISiFc9floW1jZZ8oIexeFQmIjomZcYGTGhMEIjgGwNCP9jcinUA8Neu8VQzGGP9kHwrQJBSU0k/QTTDcP+2j5GwYv0hmgy5t0pV6bJk+ciDxvZcDlAtRsKCUndrfiLrapboIh8/tBMGPAnaaFuFt/d7gL1y96BlELtcJSXf3RlxoymZTj2+lNA4cQCLGjx15Qa29qr4EoHVqSNBg4QTcBR54gXTbntWsAI3zW2Hqw3Kps3eJM2jbiqJJbhLp4ststYb22jCN+77h1vz9iWGESnGltgYAbQR2bplD6yXr4MqymtMRp6Hr5bSZ8=
-  - secure: dBmQf3vut2EWw2egJddzLpKdnYVqFXHW5D+dGtKfK0HMw0CIDvJ8j/gG2/WE8jvXvp7fn7JQoU1Gr3G9FrMSu6ODpp9K+aUHrGkf7CDyvEo3SDOrPqBL9dCW8lKwTgoBsR7OTkQ8rFYWjl0UJg6eZeRuysjMzMQRVXrUDyCEwWZxGqbTS/3fz/NJmjCNtLviTVzBz7cYZrm/fJ/jiVjk3Bk+9UsDNrzNvpVLZSQ+y0SbY4EFfVLtHYgMpcWGpqT8tZC/18tJSOoab2hSjn2WqP6f4MmNczP/9jmYjrhRLLJRCm0T32zZ11zTPECDpQDNP75w3OdIUmgjolMRRq+ms6dE+R7LVGHJkFQMWDEyMW04E/bmtFnCOGgwvvGbcSXWz2/jrdUsK39w2bVak/cu132Kv7XvbtWWnEf0QualJ3Yh3P3cCKqQwtQycSLQWMHdKpUzKW1PNtoNgV5RBvSM9ZnS55OGaioftnd78G4XUVeCcOTmB3BUMZQgcVabkDA21DgfIPZkGKjfri1UE5olTO4CDUr8v4nnG0Lag60XVp7VhApWldZ4IU1jG+wKNHa8T1mG6XDwHFHPGgq/QF5yCSUvvfzYwPpibmK5jVlHgI5n7+jXEqWl5HJCSycbylk6m5cgrAFnNF+TW0BIbs+nAIId3H9Rqqv2nvKaa60Zdds=
-
 go_import_path: github.com/inwinstack/ipam-operator
-
 before_install:
 - go get -u github.com/golang/dep/cmd/dep
 script:
 - make dep
 - make test
 - make
-after_success:
 - bash <(curl -s https://codecov.io/bash)
-- docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
+after_success:
+- docker login -u="$DOCKER_USER" -p="$DOCKER_PASSWORD";
 - make build_image
 - make push_image
-
