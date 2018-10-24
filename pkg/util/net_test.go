@@ -74,12 +74,20 @@ func TestGetAllIP(t *testing.T) {
 		}
 
 		ips := GetAllIP(net)
-		if len(results) != len(ips) {
-			assert.Error(t, fmt.Errorf("Wrong parsed nets. Expected %d, got %d", len(results), len(ips)))
-		}
+		assert.Equal(t, results, ips)
+	}
+}
 
-		for index, ip := range ips {
-			assert.Equal(t, results[index], ip)
-		}
+func TestParseIPs(t *testing.T) {
+	tests := map[string][]string{
+		"172.22.132.10,172.22.132.11": {
+			"172.22.132.10",
+			"172.22.132.11",
+		},
+	}
+
+	for param, results := range tests {
+		ips := ParseIPs(param)
+		assert.Equal(t, results, ips)
 	}
 }

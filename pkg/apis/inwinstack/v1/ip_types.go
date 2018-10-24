@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,39 +22,46 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// IPPoolList is a list of Pool.
-type IPPoolList struct {
+// IPList is a list of IP.
+type IPList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []IPPool `json:"items"`
+	Items []IP `json:"items"`
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// IPPool represents a Kubernetes IPPool Custom Resource.
-// The Pool will be used as IP pools.
-type IPPool struct {
+// IP represents a Kubernetes IP Custom Resource.
+// The IP will be used as IP.
+type IP struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   IPPoolSpec   `json:"spec"`
-	Status IPPoolStatus `json:"status,omitempty"`
+	Spec   IPSpec   `json:"spec"`
+	Status IPStatus `json:"status,omitempty"`
 }
 
-// IPPoolSpec is the spec for a Pool resource.
-type IPPoolSpec struct {
-	Address          string   `json:"address"`
-	IgnoreNamespaces []string `json:"ignoreNamespaces"`
+// IPSpec is the spec for a IP resource.
+type IPSpec struct {
+	PoolName        string `json:"poolName"`
+	UpdateNamespace bool   `json:"updateNamespace"`
 }
 
-// IPPoolStatus represents the current state of a resource.
-type IPPoolStatus struct {
-	Message        string      `json:"message"`
+type IPPhase string
+
+// These are the valid phases of a IP.
+const (
+	IPActive      IPPhase = "Active"
+	IPFailed      IPPhase = "Failed"
+	IPTerminating IPPhase = "Terminating"
+)
+
+// IPStatus represents the current state of a IP resource.
+type IPStatus struct {
+	Phase          IPPhase     `json:"phase"`
+	Reason         string      `json:"reason,omitempty"`
 	LastUpdateTime metav1.Time `json:"lastUpdateTime"`
-	AllocatedIPs   []string    `json:"allocatedIPs"`
-	AllocatableIPs []string    `json:"allocatableIPs"`
-	Capacity       int         `json:"capacity"`
+	Address        string      `json:"address,omitempty"`
 }

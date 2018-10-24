@@ -7,15 +7,22 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/inwinstack/ipam-operator/pkg/operator"
+	"github.com/inwinstack/ipam-operator/pkg/version"
 	flag "github.com/spf13/pflag"
 )
 
 var (
 	kubeconfig string
+	address    string
+	namespaces []string
+	ver        bool
 )
 
 func parserFlags() {
 	flag.StringVarP(&kubeconfig, "kubeconfig", "", "", "Absolute path to the kubeconfig file.")
+	flag.StringVarP(&address, "default-address", "", "", "Set default IP pool address.")
+	flag.StringSliceVarP(&namespaces, "default-ignore-namespaces", "", nil, "Set default IP pool ignore namespaces.")
+	flag.BoolVarP(&ver, "version", "", false, "Display the version of subserver.")
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
 }
@@ -24,17 +31,25 @@ func main() {
 	defer glog.Flush()
 	parserFlags()
 
+	if ver {
+		fmt.Fprintf(os.Stdout, "%s\n", version.GetVersion())
+		os.Exit(0)
+	}
+
 	glog.Infof("Starting IPAM operator...")
 
-	f := &operator.Flag{Kubeconfig: kubeconfig}
+	f := &operator.Flag{
+		Kubeconfig:       kubeconfig,
+		IgnoreNamespaces: namespaces,
+		Address:          address,
+	}
+
 	op := operator.NewMainOperator(f)
 	if err := op.Initialize(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error initing operator instance: %s.\n", err)
-		os.Exit(1)
+		glog.Fatalf("Error initing operator instance: %v.\n", err)
 	}
 
 	if err := op.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error serving operator instance: %s.\n", err)
-		os.Exit(1)
+		glog.Fatalf("Error serving operator instance: %s.\n", err)
 	}
 }
