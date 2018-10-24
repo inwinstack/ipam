@@ -32,6 +32,10 @@ test:
 build_image:
 	docker build -t $(OWNER)/ipam-operator:$(VERSION) .
 
+.PHONY: push_image
+push_image:
+	docker push $(OWNER)/ipam-operator:$(VERSION)
+
 .PHONY: clean
 clean:
 	rm -rf out/
