@@ -5,6 +5,7 @@
 *.so
 *.dylib
 *.out
+*.conf
 
 .DS_Store
 vendor/
@@ -13,3 +14,4 @@ tmp/
 
 pkg/client/listers/
 pkg/client/informers/
+

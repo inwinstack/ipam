@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	inwinv1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1"
 	inwinclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1"
 	"github.com/inwinstack/ipam-operator/pkg/constants"
 	"github.com/inwinstack/ipam-operator/pkg/util/k8sutil"
@@ -116,6 +117,17 @@ func (c *NamespaceController) makeAnnotations(ns *v1.Namespace) {
 	}
 }
 
+func (c *NamespaceController) filterPoolIPs(ips *inwinv1.IPList, pool *inwinv1.Pool) *inwinv1.IPList {
+	newIPs := &inwinv1.IPList{}
+
+	for _, ip := range ips.Items {
+		if ip.Spec.PoolName == pool.Name {
+			newIPs.Items = append(newIPs.Items, ip)
+		}
+	}
+	return newIPs
+}
+
 func (c *NamespaceController) createOrDeleteIPs(ns *v1.Namespace) error {
 	poolName := ns.Annotations[constants.AllocatePoolName]
 	pool, err := c.clientset.Pools().Get(poolName, metav1.GetOptions{})
@@ -131,6 +143,7 @@ func (c *NamespaceController) createOrDeleteIPs(ns *v1.Namespace) error {
 	if err != nil {
 		return err
 	}
+	ips = c.filterPoolIPs(ips, pool)
 
 	ipNumber, err := strconv.Atoi(ns.Annotations[constants.AllocateNumberOfIP])
 	if err != nil {
@@ -170,6 +183,7 @@ func (c *NamespaceController) syncIPsToAnnotations(ns *v1.Namespace) error {
 	if err != nil {
 		return err
 	}
+	ips = c.filterPoolIPs(ips, pool)
 
 	sort.Slice(ips.Items, func(i, j int) bool {
 		return ips.Items[i].Status.LastUpdateTime.Before(&ips.Items[j].Status.LastUpdateTime)

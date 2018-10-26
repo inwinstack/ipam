@@ -77,7 +77,7 @@ func NewIPWithNamespace(ns *v1.Namespace, poolName string) *inwinv1.IP {
 	}
 }
 
-func NewDefaultPool(addr string, namespaces []string) *inwinv1.Pool {
+func NewDefaultPool(addr string, namespaces []string, auto, ignore bool) *inwinv1.Pool {
 	return &inwinv1.Pool{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: constants.DefaultPoolName,
@@ -85,8 +85,8 @@ func NewDefaultPool(addr string, namespaces []string) *inwinv1.Pool {
 		Spec: inwinv1.PoolSpec{
 			Address:                   addr,
 			IgnoreNamespaces:          namespaces,
-			IgnoreNamespaceAnnotation: false,
-			AutoAssignToNamespace:     true,
+			IgnoreNamespaceAnnotation: ignore,
+			AutoAssignToNamespace:     auto,
 		},
 	}
 }

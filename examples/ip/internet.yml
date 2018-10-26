@@ -1,0 +1,8 @@
+apiVersion: inwinstack.com/v1
+kind: IP
+metadata:
+  name: internet-ip-1
+  namespace: test
+spec:
+  poolName: internet
+  updateNamespace: false

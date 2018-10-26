@@ -12,16 +12,20 @@ import (
 )
 
 var (
-	kubeconfig string
-	address    string
-	namespaces []string
-	ver        bool
+	kubeconfig       string
+	address          string
+	namespaces       []string
+	autoAssign       bool
+	ignoreAnnotation bool
+	ver              bool
 )
 
 func parserFlags() {
 	flag.StringVarP(&kubeconfig, "kubeconfig", "", "", "Absolute path to the kubeconfig file.")
 	flag.StringVarP(&address, "default-address", "", "", "Set default IP pool address.")
 	flag.StringSliceVarP(&namespaces, "default-ignore-namespaces", "", nil, "Set default IP pool ignore namespaces.")
+	flag.BoolVarP(&autoAssign, "default-auto-assign", "", true, "Set default IP pool ignore namespace annotation.")
+	flag.BoolVarP(&ignoreAnnotation, "default-ignore-annotation", "", false, "Set default IP pool ignore namespace annotation.")
 	flag.BoolVarP(&ver, "version", "", false, "Display the version of subserver.")
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
@@ -39,9 +43,11 @@ func main() {
 	glog.Infof("Starting IPAM operator...")
 
 	f := &operator.Flag{
-		Kubeconfig:       kubeconfig,
-		IgnoreNamespaces: namespaces,
-		Address:          address,
+		Kubeconfig:                kubeconfig,
+		IgnoreNamespaces:          namespaces,
+		Address:                   address,
+		AutoAssignToNamespace:     autoAssign,
+		IgnoreNamespaceAnnotation: ignoreAnnotation,
 	}
 
 	op := operator.NewMainOperator(f)
