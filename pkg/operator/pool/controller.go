@@ -69,7 +69,7 @@ func (c *PoolController) StartWatch(namespace string, stopCh chan struct{}) erro
 	return nil
 }
 
-func (c *PoolController) CreateDefaultPool(address string, namespaces []string) error {
+func (c *PoolController) CreateDefaultPool(address string, namespaces []string, auto, ignore bool) error {
 	if address == "" && namespaces == nil {
 		return fmt.Errorf("Miss address and namespaces flag")
 	}
@@ -80,7 +80,7 @@ func (c *PoolController) CreateDefaultPool(address string, namespaces []string) 
 		return nil
 	}
 
-	pool := k8sutil.NewDefaultPool(address, namespaces)
+	pool := k8sutil.NewDefaultPool(address, namespaces, auto, ignore)
 	if _, err := c.clientset.Pools().Create(pool); err != nil {
 		return err
 	}

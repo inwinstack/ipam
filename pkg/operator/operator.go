@@ -36,9 +36,11 @@ import (
 )
 
 type Flag struct {
-	Kubeconfig       string
-	Address          string
-	IgnoreNamespaces []string
+	Kubeconfig                string
+	Address                   string
+	IgnoreNamespaces          []string
+	IgnoreNamespaceAnnotation bool
+	AutoAssignToNamespace     bool
 }
 
 type Operator struct {
@@ -145,7 +147,12 @@ func (o *Operator) Run() error {
 	o.pool.StartWatch(v1.NamespaceAll, stopChan)
 
 	// init the custom resources
-	if err := o.pool.CreateDefaultPool(o.flag.Address, o.flag.IgnoreNamespaces); err != nil {
+	err := o.pool.CreateDefaultPool(
+		o.flag.Address,
+		o.flag.IgnoreNamespaces,
+		o.flag.AutoAssignToNamespace,
+		o.flag.IgnoreNamespaceAnnotation)
+	if err != nil {
 		return fmt.Errorf("Failed to create default IP pool. %+v", err)
 	}
 
