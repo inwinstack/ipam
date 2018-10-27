@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	inwinv1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1"
-	inwinclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1"
+	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
+	inwinclientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
 	"github.com/inwinstack/ipam-operator/pkg/constants"
 	"github.com/inwinstack/ipam-operator/pkg/util"
 	"github.com/inwinstack/ipam-operator/pkg/util/slice"
@@ -86,7 +86,7 @@ func (c *IPController) onUpdate(oldObj, newObj interface{}) {
 	glog.V(2).Infof("Received update on IP %s in namespace %s.", ip.Name, ip.Namespace)
 
 	if ip.Status.Phase == inwinv1.IPActive {
-		if err := c.makeNamespaceRefreshAnnotations(ip); err != nil {
+		if err := c.makeNamespaceRefresh(ip); err != nil {
 			glog.Errorf("Failed to update namespace annotations for %s : %v.", ip.Name, err)
 		}
 	}
@@ -101,7 +101,7 @@ func (c *IPController) onDelete(obj interface{}) {
 			glog.Errorf("Failed to deallocate IP for %s : %v.", ip.Name, err)
 		}
 
-		if err := c.makeNamespaceRefreshAnnotations(ip); err != nil {
+		if err := c.makeNamespaceRefresh(ip); err != nil {
 			glog.Errorf("Failed to update namespace annotations for %s : %v.", ip.Name, err)
 		}
 	}
@@ -129,6 +129,7 @@ func (c *IPController) allocate(ip *inwinv1.IP) error {
 			ip.Status.Address = ips[0]
 			ip.Status.Phase = inwinv1.IPActive
 			pool.Status.AllocatedIPs = append(pool.Status.AllocatedIPs, ips[0])
+			pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
 			pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
 			if _, err := c.clientset.Pools().Update(pool); err != nil {
 				return c.makeFailedStatus(ip, err)
@@ -155,6 +156,7 @@ func (c *IPController) deallocate(ip *inwinv1.IP) error {
 
 	if pool.Status.Phase == inwinv1.PoolActive {
 		pool.Status.AllocatedIPs = slice.RemoveItem(pool.Status.AllocatedIPs, ip.Status.Address)
+		pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
 		pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
 		if _, err := c.clientset.Pools().Update(pool); err != nil {
 			return c.makeFailedStatus(ip, err)
@@ -163,7 +165,7 @@ func (c *IPController) deallocate(ip *inwinv1.IP) error {
 	return nil
 }
 
-func (c *IPController) makeNamespaceRefreshAnnotations(ip *inwinv1.IP) error {
+func (c *IPController) makeNamespaceRefresh(ip *inwinv1.IP) error {
 	if ip.Spec.UpdateNamespace {
 		ns, err := c.ctx.Clientset.CoreV1().Namespaces().Get(ip.Namespace, metav1.GetOptions{})
 		if err != nil {
@@ -172,7 +174,7 @@ func (c *IPController) makeNamespaceRefreshAnnotations(ip *inwinv1.IP) error {
 		}
 
 		if ns.Status.Phase != v1.NamespaceTerminating {
-			ns.Annotations[constants.AllocateRefreshIPs] = "true"
+			ns.Annotations[constants.AnnKeyNamespaceRefresh] = "true"
 			if _, err := c.ctx.Clientset.CoreV1().Namespaces().Update(ns); err != nil {
 				return err
 			}

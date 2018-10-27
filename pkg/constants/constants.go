@@ -17,14 +17,18 @@ limitations under the License.
 package constants
 
 const (
-	DefaultPoolName   = "default"
+	// DefaultPool is the default of pool name
+	DefaultPool = "default"
+	// DefaultNumberOfIP is the default of IP for pool
 	DefaultNumberOfIP = 1
-
-	DeleteNumberOfIP = 0
-
-	AllocatedIPs       = "inwinstack.com/allocated-ips"
-	AllocatedLatestIP  = "inwinstack.com/allocated-latest-ip"
-	AllocateNumberOfIP = "inwinstack.com/allocate-ip-number"
-	AllocatePoolName   = "inwinstack.com/allocate-pool-name"
-	AllocateRefreshIPs = "inwinstack.com/allocate-refresh-ips"
+	// AnnKeyIPs will set in namespace resource to display IPs of allocation.
+	AnnKeyIPs = "inwinstack.com/allocated-ips"
+	// AnnKeyLatestIP will set in namespace resource to display the latest allocated IP
+	AnnKeyLatestIP = "inwinstack.com/allocated-latest-ip"
+	// AnnKeyNumberOfIP will set in namespace resource to represent the number of IP want to allocate.
+	AnnKeyNumberOfIP = "inwinstack.com/allocate-ip-number"
+	// AnnKeyPoolName will set in namespace resource to represent the current IP pool.
+	AnnKeyPoolName = "inwinstack.com/allocate-pool-name"
+	// AnnKeyNamespaceRefresh set in namespace to refresh annotations
+	AnnKeyNamespaceRefresh = "inwinstack.com/namespace-refresh"
 )

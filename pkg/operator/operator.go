@@ -24,13 +24,13 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	inwinclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1"
+	inwinclientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
+	"github.com/inwinstack/ipam-operator/pkg/k8sutil"
 	"github.com/inwinstack/ipam-operator/pkg/operator/ip"
 	"github.com/inwinstack/ipam-operator/pkg/operator/namespace"
 	"github.com/inwinstack/ipam-operator/pkg/operator/pool"
-	"github.com/inwinstack/ipam-operator/pkg/util/k8sutil"
 	opkit "github.com/inwinstack/operator-kit"
-	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apiextensionsclients "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -93,7 +93,7 @@ func (o *Operator) initContextAndClient() (*opkit.Context, inwinclientset.Inwins
 		return nil, nil, fmt.Errorf("Failed to get Kubernetes client. %+v", err)
 	}
 
-	extensionsclient, err := apiextensionsclient.NewForConfig(config)
+	extensionsclient, err := apiextensionsclients.NewForConfig(config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to create Kubernetes API extension clientset. %+v", err)
 	}
