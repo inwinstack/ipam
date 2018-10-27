@@ -22,11 +22,11 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	inwinv1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1"
-	inwinclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1"
+	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
+	inwinclientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
 	"github.com/inwinstack/ipam-operator/pkg/constants"
+	"github.com/inwinstack/ipam-operator/pkg/k8sutil"
 	"github.com/inwinstack/ipam-operator/pkg/util"
-	"github.com/inwinstack/ipam-operator/pkg/util/k8sutil"
 	opkit "github.com/inwinstack/operator-kit"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,7 +74,7 @@ func (c *PoolController) CreateDefaultPool(address string, namespaces []string, 
 		return fmt.Errorf("Miss address and namespaces flag")
 	}
 
-	_, err := c.clientset.Pools().Get(constants.DefaultPoolName, metav1.GetOptions{})
+	_, err := c.clientset.Pools().Get(constants.DefaultPool, metav1.GetOptions{})
 	if err == nil {
 		glog.V(2).Infof("The default pool already exists.")
 		return nil
@@ -120,6 +120,7 @@ func (c *PoolController) makeStatus(pool *inwinv1.Pool) error {
 		}
 
 		pool.Status.Capacity = len(ips)
+		pool.Status.Allocatable = len(ips)
 		pool.Status.AllocatedIPs = []string{}
 		pool.Status.Phase = inwinv1.PoolActive
 		pool.Status.LastUpdateTime = metav1.NewTime(time.Now())

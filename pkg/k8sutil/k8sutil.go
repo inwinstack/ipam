@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"reflect"
 
-	inwinv1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1"
+	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
 	"github.com/inwinstack/ipam-operator/pkg/constants"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,10 +77,20 @@ func NewIPWithNamespace(ns *v1.Namespace, poolName string) *inwinv1.IP {
 	}
 }
 
+func FilterIPsByPool(ips *inwinv1.IPList, pool *inwinv1.Pool) {
+	var items []inwinv1.IP
+	for _, ip := range ips.Items {
+		if ip.Spec.PoolName == pool.Name {
+			items = append(items, ip)
+		}
+	}
+	ips.Items = items
+}
+
 func NewDefaultPool(addr string, namespaces []string, auto, ignore bool) *inwinv1.Pool {
 	return &inwinv1.Pool{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: constants.DefaultPoolName,
+			Name: constants.DefaultPool,
 		},
 		Spec: inwinv1.PoolSpec{
 			Address:                   addr,

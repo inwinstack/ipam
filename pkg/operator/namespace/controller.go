@@ -23,10 +23,9 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	inwinv1 "github.com/inwinstack/ipam-operator/pkg/apis/inwinstack/v1"
-	inwinclientset "github.com/inwinstack/ipam-operator/pkg/client/clientset/versioned/typed/inwinstack/v1"
+	inwinclientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
 	"github.com/inwinstack/ipam-operator/pkg/constants"
-	"github.com/inwinstack/ipam-operator/pkg/util/k8sutil"
+	"github.com/inwinstack/ipam-operator/pkg/k8sutil"
 	"github.com/inwinstack/ipam-operator/pkg/util/slice"
 	opkit "github.com/inwinstack/operator-kit"
 	"k8s.io/api/core/v1"
@@ -68,7 +67,6 @@ func (c *NamespaceController) onAdd(obj interface{}) {
 	glog.V(2).Infof("Namespace %s has added.", ns.Name)
 
 	c.makeAnnotations(ns)
-
 	if ns.Status.Phase != v1.NamespaceTerminating {
 		if err := c.createOrDeleteIPs(ns); err != nil {
 			glog.Errorf("Failed to create IPs in %s namespace: %s.", ns.Name, err)
@@ -90,7 +88,7 @@ func (c *NamespaceController) onUpdate(oldObj, newObj interface{}) {
 		}
 	}
 
-	_, refresh := ns.Annotations[constants.AllocateRefreshIPs]
+	_, refresh := ns.Annotations[constants.AnnKeyNamespaceRefresh]
 	if refresh {
 		if err := c.syncIPsToAnnotations(ns); err != nil {
 			glog.Errorf("Failed to sync IPs in %s namespace: %s.", ns.Name, err)
@@ -108,28 +106,17 @@ func (c *NamespaceController) makeAnnotations(ns *v1.Namespace) {
 		ns.Annotations = map[string]string{}
 	}
 
-	if ns.Annotations[constants.AllocateNumberOfIP] == "" {
-		ns.Annotations[constants.AllocateNumberOfIP] = strconv.Itoa(constants.DefaultNumberOfIP)
+	if ns.Annotations[constants.AnnKeyNumberOfIP] == "" {
+		ns.Annotations[constants.AnnKeyNumberOfIP] = strconv.Itoa(constants.DefaultNumberOfIP)
 	}
 
-	if ns.Annotations[constants.AllocatePoolName] == "" {
-		ns.Annotations[constants.AllocatePoolName] = constants.DefaultPoolName
+	if ns.Annotations[constants.AnnKeyPoolName] == "" {
+		ns.Annotations[constants.AnnKeyPoolName] = constants.DefaultPool
 	}
-}
-
-func (c *NamespaceController) filterPoolIPs(ips *inwinv1.IPList, pool *inwinv1.Pool) *inwinv1.IPList {
-	newIPs := &inwinv1.IPList{}
-
-	for _, ip := range ips.Items {
-		if ip.Spec.PoolName == pool.Name {
-			newIPs.Items = append(newIPs.Items, ip)
-		}
-	}
-	return newIPs
 }
 
 func (c *NamespaceController) createOrDeleteIPs(ns *v1.Namespace) error {
-	poolName := ns.Annotations[constants.AllocatePoolName]
+	poolName := ns.Annotations[constants.AnnKeyPoolName]
 	pool, err := c.clientset.Pools().Get(poolName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -143,12 +130,14 @@ func (c *NamespaceController) createOrDeleteIPs(ns *v1.Namespace) error {
 	if err != nil {
 		return err
 	}
-	ips = c.filterPoolIPs(ips, pool)
 
-	ipNumber, err := strconv.Atoi(ns.Annotations[constants.AllocateNumberOfIP])
+	ipNumber, err := strconv.Atoi(ns.Annotations[constants.AnnKeyNumberOfIP])
 	if err != nil {
 		return err
 	}
+
+	// Filter irrelevant IPs
+	k8sutil.FilterIPsByPool(ips, pool)
 
 	// Create IPs
 	for i := 0; i < (ipNumber - len(ips.Items)); i++ {
@@ -169,7 +158,7 @@ func (c *NamespaceController) createOrDeleteIPs(ns *v1.Namespace) error {
 }
 
 func (c *NamespaceController) syncIPsToAnnotations(ns *v1.Namespace) error {
-	poolName := ns.Annotations[constants.AllocatePoolName]
+	poolName := ns.Annotations[constants.AnnKeyPoolName]
 	pool, err := c.clientset.Pools().Get(poolName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -183,8 +172,11 @@ func (c *NamespaceController) syncIPsToAnnotations(ns *v1.Namespace) error {
 	if err != nil {
 		return err
 	}
-	ips = c.filterPoolIPs(ips, pool)
 
+	// Filter irrelevant IPs
+	k8sutil.FilterIPsByPool(ips, pool)
+
+	// Sort by last update time
 	sort.Slice(ips.Items, func(i, j int) bool {
 		return ips.Items[i].Status.LastUpdateTime.Before(&ips.Items[j].Status.LastUpdateTime)
 	})
@@ -196,14 +188,14 @@ func (c *NamespaceController) syncIPsToAnnotations(ns *v1.Namespace) error {
 		}
 	}
 
-	ns.Annotations[constants.AllocatedIPs] = ""
-	ns.Annotations[constants.AllocatedLatestIP] = ""
+	ns.Annotations[constants.AnnKeyIPs] = ""
+	ns.Annotations[constants.AnnKeyLatestIP] = ""
 	if len(newIPs) != 0 {
-		ns.Annotations[constants.AllocatedIPs] = strings.Join(newIPs, ",")
-		ns.Annotations[constants.AllocatedLatestIP] = newIPs[len(newIPs)-1]
+		ns.Annotations[constants.AnnKeyIPs] = strings.Join(newIPs, ",")
+		ns.Annotations[constants.AnnKeyLatestIP] = newIPs[len(newIPs)-1]
 	}
 
-	delete(ns.Annotations, constants.AllocateRefreshIPs)
+	delete(ns.Annotations, constants.AnnKeyNamespaceRefresh)
 	if _, err := c.ctx.Clientset.CoreV1().Namespaces().Update(ns); err != nil {
 		return err
 	}

@@ -19,7 +19,7 @@ spec:
       serviceAccountName: ipam-operator
       containers:
       - name: operator
-        image: inwinstack/ipam-operator:v0.3.0
+        image: inwinstack/ipam-operator:v0.4.0
         args:
         - --logtostderr=true
         - --default-ignore-namespaces=kube-system,default,kube-public 
