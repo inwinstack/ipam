@@ -26,7 +26,7 @@ func parserFlags() {
 	flag.StringSliceVarP(&namespaces, "default-ignore-namespaces", "", nil, "Set default IP pool ignore namespaces.")
 	flag.BoolVarP(&autoAssign, "default-auto-assign", "", true, "Set default IP pool ignore namespace annotation.")
 	flag.BoolVarP(&ignoreAnnotation, "default-ignore-annotation", "", false, "Set default IP pool ignore namespace annotation.")
-	flag.BoolVarP(&ver, "version", "", false, "Display the version of subserver.")
+	flag.BoolVarP(&ver, "version", "", false, "Display the version")
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
 }
