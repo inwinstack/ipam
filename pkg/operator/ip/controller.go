@@ -76,7 +76,7 @@ func (c *IPController) onAdd(obj interface{}) {
 
 	if ip.Status.Phase != inwinv1.IPActive {
 		if err := c.allocate(ip); err != nil {
-			glog.Errorf("Failed to allocate IP for %s : %v.", ip.Name, err)
+			glog.Errorf("Failed to allocate IP for %s : %+v.", ip.Name, err)
 		}
 	}
 }
@@ -87,7 +87,7 @@ func (c *IPController) onUpdate(oldObj, newObj interface{}) {
 
 	if ip.Status.Phase == inwinv1.IPActive {
 		if err := c.makeNamespaceRefresh(ip); err != nil {
-			glog.Errorf("Failed to update namespace annotations for %s : %v.", ip.Name, err)
+			glog.Errorf("Failed to update namespace annotations for %s : %+v.", ip.Name, err)
 		}
 	}
 }
@@ -98,11 +98,11 @@ func (c *IPController) onDelete(obj interface{}) {
 
 	if ip.Status.Phase == inwinv1.IPActive {
 		if err := c.deallocate(ip); err != nil {
-			glog.Errorf("Failed to deallocate IP for %s : %v.", ip.Name, err)
+			glog.Errorf("Failed to deallocate IP for %s : %+v.", ip.Name, err)
 		}
 
 		if err := c.makeNamespaceRefresh(ip); err != nil {
-			glog.Errorf("Failed to update namespace annotations for %s : %v.", ip.Name, err)
+			glog.Errorf("Failed to update namespace annotations for %s : %+v.", ip.Name, err)
 		}
 	}
 }

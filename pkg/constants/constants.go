@@ -17,9 +17,9 @@ limitations under the License.
 package constants
 
 const (
-	// DefaultPool is the default of pool name
+	// DefaultPool represents the default pool name for a namespace.
 	DefaultPool = "default"
-	// DefaultNumberOfIP is the default of IP for pool
+	// DefaultNumberOfIP represents the default number of IP for a namespace.
 	DefaultNumberOfIP = 1
 	// AnnKeyIPs will set in namespace resource to display IPs of allocation.
 	AnnKeyIPs = "inwinstack.com/allocated-ips"

@@ -93,7 +93,7 @@ func (c *PoolController) onAdd(obj interface{}) {
 	glog.V(2).Infof("Pool %s has added.", pool.Name)
 
 	if err := c.makeStatus(pool); err != nil {
-		glog.Errorf("Failed to init status in %s pool: %s.", pool.Name, err)
+		glog.Errorf("Failed to init status in %s pool: %+v.", pool.Name, err)
 	}
 }
 
