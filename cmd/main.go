@@ -52,10 +52,10 @@ func main() {
 
 	op := operator.NewMainOperator(f)
 	if err := op.Initialize(); err != nil {
-		glog.Fatalf("Error initing operator instance: %v.\n", err)
+		glog.Fatalf("Error initing operator instance: %+v.\n", err)
 	}
 
 	if err := op.Run(); err != nil {
-		glog.Fatalf("Error serving operator instance: %s.\n", err)
+		glog.Fatalf("Error serving operator instance: %+v.\n", err)
 	}
 }

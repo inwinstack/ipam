@@ -69,12 +69,12 @@ func (c *NamespaceController) onAdd(obj interface{}) {
 	c.makeAnnotations(ns)
 	if ns.Status.Phase != v1.NamespaceTerminating {
 		if err := c.createOrDeleteIPs(ns); err != nil {
-			glog.Errorf("Failed to create IPs in %s namespace: %s.", ns.Name, err)
+			glog.Errorf("Failed to create IPs in %s namespace: %+v.", ns.Name, err)
 		}
 	}
 
 	if _, err := c.ctx.Clientset.CoreV1().Namespaces().Update(ns); err != nil {
-		glog.Errorf("Failed to update %s namespace: %s.", ns.Name, err)
+		glog.Errorf("Failed to update %s namespace: %+v.", ns.Name, err)
 	}
 }
 
@@ -84,14 +84,14 @@ func (c *NamespaceController) onUpdate(oldObj, newObj interface{}) {
 
 	if ns.Status.Phase != v1.NamespaceTerminating {
 		if err := c.createOrDeleteIPs(ns); err != nil {
-			glog.Errorf("Failed to create IPs in %s namespace: %s.", ns.Name, err)
+			glog.Errorf("Failed to create IPs in %s namespace: %+v.", ns.Name, err)
 		}
 	}
 
 	_, refresh := ns.Annotations[constants.AnnKeyNamespaceRefresh]
 	if refresh {
 		if err := c.syncIPsToAnnotations(ns); err != nil {
-			glog.Errorf("Failed to sync IPs in %s namespace: %s.", ns.Name, err)
+			glog.Errorf("Failed to sync IPs in %s namespace: %+v.", ns.Name, err)
 		}
 	}
 }

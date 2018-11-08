@@ -1,6 +1,8 @@
 [![Build Status](https://travis-ci.org/inwinstack/ipam-operator.svg?branch=master)](https://travis-ci.org/inwinstack/ipam-operator) [![Docker Build Status](https://img.shields.io/docker/build/inwinstack/ipam-operator.svg)](https://hub.docker.com/r/inwinstack/ipam-operator/) [![codecov](https://codecov.io/gh/inwinstack/ipam-operator/branch/master/graph/badge.svg)](https://codecov.io/gh/inwinstack/ipam-operator) ![Hex.pm](https://img.shields.io/hexpm/l/plug.svg)
 # IPAM Operator
-An operator to auto assign IP for Kubernetes Namespace.
+An operator to auto assigns IP for Kubernetes Namespace. This operator will provide two custom resource(Pool and IP).
+
+![](images/architecture.png)
 
 ## Building from Source
 Clone repo into your go path under `$GOPATH/src`:
