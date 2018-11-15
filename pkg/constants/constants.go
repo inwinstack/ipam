@@ -23,12 +23,12 @@ const (
 	DefaultNumberOfIP = 1
 	// AnnKeyIPs will set in namespace resource to display IPs of allocation.
 	AnnKeyIPs = "inwinstack.com/allocated-ips"
-	// AnnKeyLatestIP will set in namespace resource to display the latest allocated IP
+	// AnnKeyLatestIP will set in namespace resource to display the latest allocated IP.
 	AnnKeyLatestIP = "inwinstack.com/allocated-latest-ip"
 	// AnnKeyNumberOfIP will set in namespace resource to represent the number of IP want to allocate.
 	AnnKeyNumberOfIP = "inwinstack.com/allocate-ip-number"
 	// AnnKeyPoolName will set in namespace resource to represent the current IP pool.
 	AnnKeyPoolName = "inwinstack.com/allocate-pool-name"
-	// AnnKeyNamespaceRefresh set in namespace to refresh annotations
+	// AnnKeyNamespaceRefresh will be set in namespace resource to refresh annotations.
 	AnnKeyNamespaceRefresh = "inwinstack.com/namespace-refresh"
 )
