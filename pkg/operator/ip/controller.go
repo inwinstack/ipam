@@ -127,6 +127,7 @@ func (c *IPController) allocate(ip *inwinv1.IP) error {
 
 		if len(ips) != 0 {
 			ip.Status.Address = ips[0]
+			ip.Status.Ports = []int{}
 			ip.Status.Phase = inwinv1.IPActive
 			pool.Status.AllocatedIPs = append(pool.Status.AllocatedIPs, ips[0])
 			pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
