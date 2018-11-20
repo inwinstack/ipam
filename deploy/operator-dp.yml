@@ -19,11 +19,11 @@ spec:
       serviceAccountName: ipam-operator
       containers:
       - name: operator
-        image: inwinstack/ipam-operator:v0.4.0
+        image: inwinstack/ipam-operator:v0.4.1
         args:
         - --logtostderr=true
         - --default-ignore-namespaces=kube-system,default,kube-public 
-        - --default-address=172.22.132.200/27
+        - --default-address=172.22.132.150-172.22.132.200
         - --default-auto-assign=true
         - --default-ignore-annotation=false
         - --v=2
