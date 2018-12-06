@@ -24,9 +24,9 @@ import (
 
 	"github.com/golang/glog"
 	inwinclientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
-	"github.com/inwinstack/ipam-operator/pkg/constants"
-	"github.com/inwinstack/ipam-operator/pkg/k8sutil"
-	"github.com/inwinstack/ipam-operator/pkg/util/slice"
+	"github.com/inwinstack/ipam/pkg/constants"
+	"github.com/inwinstack/ipam/pkg/k8sutil"
+	"github.com/inwinstack/ipam/pkg/util/slice"
 	opkit "github.com/inwinstack/operator-kit"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

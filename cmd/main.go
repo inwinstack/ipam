@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/golang/glog"
-	"github.com/inwinstack/ipam-operator/pkg/operator"
-	"github.com/inwinstack/ipam-operator/pkg/version"
+	"github.com/inwinstack/ipam/pkg/operator"
+	"github.com/inwinstack/ipam/pkg/version"
 	flag "github.com/spf13/pflag"
 )
 

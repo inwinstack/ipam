@@ -7,15 +7,15 @@ GOOS ?= $(shell go env GOOS)
 
 ORG := github.com
 OWNER := inwinstack
-REPOPATH ?= $(ORG)/$(OWNER)/ipam-operator
+REPOPATH ?= $(ORG)/$(OWNER)/ipam
 
 $(shell mkdir -p ./out)
 
 .PHONY: build
-build: out/operator
+build: out/controller
 
-.PHONY: out/operator
-out/operator: 
+.PHONY: out/controller
+out/controller: 
 	GOOS=$(GOOS) go build \
 	  -ldflags="-X $(REPOPATH)/pkg/version.version=$(VERSION)" \
 	  -a -o $@ cmd/main.go
@@ -30,11 +30,11 @@ test:
 
 .PHONY: build_image
 build_image:
-	docker build -t $(OWNER)/ipam-operator:$(VERSION) .
+	docker build -t $(OWNER)/ipam:$(VERSION) .
 
 .PHONY: push_image
 push_image:
-	docker push $(OWNER)/ipam-operator:$(VERSION)
+	docker push $(OWNER)/ipam:$(VERSION)
 
 .PHONY: clean
 clean:

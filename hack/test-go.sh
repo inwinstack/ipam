@@ -16,7 +16,7 @@
 
 set -e
 
-REPO_PATH="github.com/inwinstack/ipam-operator"
+REPO_PATH="github.com/inwinstack/ipam"
 
 if [[ -f $(which python 2>&1) ]]; then
 	PYTHON="python"

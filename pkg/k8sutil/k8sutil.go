@@ -24,7 +24,7 @@ import (
 	"reflect"
 
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
-	"github.com/inwinstack/ipam-operator/pkg/constants"
+	"github.com/inwinstack/ipam/pkg/constants"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
