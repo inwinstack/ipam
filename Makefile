@@ -17,7 +17,7 @@ build: out/controller
 .PHONY: out/controller
 out/controller: 
 	GOOS=$(GOOS) go build \
-	  -ldflags="-X $(REPOPATH)/pkg/version.version=$(VERSION)" \
+	  -ldflags="-s -w -X $(REPOPATH)/pkg/version.version=$(VERSION)" \
 	  -a -o $@ cmd/main.go
 
 .PHONY: dep 
