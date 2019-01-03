@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  annotations:
-    inwinstack.com/allocate-ip-number: "1"
-    inwinstack.com/allocate-pool-name: test
-  name: test

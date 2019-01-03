@@ -24,7 +24,6 @@ import (
 	"reflect"
 
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
-	"github.com/inwinstack/ipam/pkg/constants"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -85,18 +84,4 @@ func FilterIPsByPool(ips *inwinv1.IPList, pool *inwinv1.Pool) {
 		}
 	}
 	ips.Items = items
-}
-
-func NewDefaultPool(addr string, namespaces []string, auto, ignore bool) *inwinv1.Pool {
-	return &inwinv1.Pool{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: constants.DefaultPool,
-		},
-		Spec: inwinv1.PoolSpec{
-			Address:                   addr,
-			IgnoreNamespaces:          namespaces,
-			IgnoreNamespaceAnnotation: ignore,
-			AutoAssignToNamespace:     auto,
-		},
-	}
 }
