@@ -17,7 +17,7 @@ $ make
 Run the following command to debug:
 ```sh
 $ go run cmd/main.go \
-    --kubeconfig $HOME/.kube/config 
+    --kubeconfig $HOME/.kube/config \
     --logtostderr \
     -v=2
 ```
