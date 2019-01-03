@@ -23,9 +23,7 @@ import (
 
 	"github.com/golang/glog"
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
-	inwinclientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
-	"github.com/inwinstack/ipam/pkg/constants"
-	"github.com/inwinstack/ipam/pkg/k8sutil"
+	clientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
 	"github.com/inwinstack/ipam/pkg/util"
 	opkit "github.com/inwinstack/operator-kit"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -49,10 +47,10 @@ var Resource = opkit.CustomResource{
 
 type PoolController struct {
 	ctx       *opkit.Context
-	clientset inwinclientset.InwinstackV1Interface
+	clientset clientset.InwinstackV1Interface
 }
 
-func NewController(ctx *opkit.Context, clientset inwinclientset.InwinstackV1Interface) *PoolController {
+func NewController(ctx *opkit.Context, clientset clientset.InwinstackV1Interface) *PoolController {
 	return &PoolController{ctx: ctx, clientset: clientset}
 }
 
@@ -69,28 +67,9 @@ func (c *PoolController) StartWatch(namespace string, stopCh chan struct{}) erro
 	return nil
 }
 
-func (c *PoolController) CreateDefaultPool(address string, namespaces []string, auto, ignore bool) error {
-	if address == "" && namespaces == nil {
-		return fmt.Errorf("Miss address and namespaces flag")
-	}
-
-	_, err := c.clientset.Pools().Get(constants.DefaultPool, metav1.GetOptions{})
-	if err == nil {
-		glog.V(2).Infof("The default pool already exists.")
-		return nil
-	}
-
-	pool := k8sutil.NewDefaultPool(address, namespaces, auto, ignore)
-	if _, err := c.clientset.Pools().Create(pool); err != nil {
-		return err
-	}
-	glog.Infof("The default pool has created.")
-	return nil
-}
-
 func (c *PoolController) onAdd(obj interface{}) {
 	pool := obj.(*inwinv1.Pool).DeepCopy()
-	glog.V(2).Infof("Pool %s has added.", pool.Name)
+	glog.V(2).Infof("Received add on Pool %s.", pool.Name)
 
 	if err := c.makeStatus(pool); err != nil {
 		glog.Errorf("Failed to init status in %s pool: %+v.", pool.Name, err)
@@ -103,7 +82,8 @@ func (c *PoolController) onUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *PoolController) onDelete(obj interface{}) {
-	glog.V(2).Infof("Pool %s has deleted.", obj.(*inwinv1.Pool).Name)
+	pool := obj.(*inwinv1.Pool).DeepCopy()
+	glog.V(2).Infof("Received delete on Pool %s .", pool.Name)
 }
 
 func (c *PoolController) makeStatus(pool *inwinv1.Pool) error {

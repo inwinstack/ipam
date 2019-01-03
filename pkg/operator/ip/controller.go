@@ -23,7 +23,7 @@ import (
 
 	"github.com/golang/glog"
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
-	inwinclientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
+	clientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
 	"github.com/inwinstack/ipam/pkg/constants"
 	"github.com/inwinstack/ipam/pkg/util"
 	"github.com/inwinstack/ipam/pkg/util/slice"
@@ -50,10 +50,10 @@ var Resource = opkit.CustomResource{
 
 type IPController struct {
 	ctx       *opkit.Context
-	clientset inwinclientset.InwinstackV1Interface
+	clientset clientset.InwinstackV1Interface
 }
 
-func NewController(ctx *opkit.Context, clientset inwinclientset.InwinstackV1Interface) *IPController {
+func NewController(ctx *opkit.Context, clientset clientset.InwinstackV1Interface) *IPController {
 	return &IPController{ctx: ctx, clientset: clientset}
 }
 
@@ -72,11 +72,11 @@ func (c *IPController) StartWatch(namespace string, stopCh chan struct{}) error 
 
 func (c *IPController) onAdd(obj interface{}) {
 	ip := obj.(*inwinv1.IP).DeepCopy()
-	glog.V(2).Infof("IP %s has added.", ip.Name)
+	glog.V(2).Infof("Received add on IP %s in %s namespace.", ip.Name, ip.Namespace)
 
 	if ip.Status.Phase != inwinv1.IPActive {
 		if err := c.allocate(ip); err != nil {
-			glog.Errorf("Failed to allocate IP for %s : %+v.", ip.Name, err)
+			glog.Errorf("Failed to allocate IP for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
 		}
 	}
 }
@@ -87,22 +87,22 @@ func (c *IPController) onUpdate(oldObj, newObj interface{}) {
 
 	if ip.Status.Phase == inwinv1.IPActive {
 		if err := c.makeNamespaceRefresh(ip); err != nil {
-			glog.Errorf("Failed to update namespace annotations for %s : %+v.", ip.Name, err)
+			glog.Errorf("Failed to update namespace annotations for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
 		}
 	}
 }
 
 func (c *IPController) onDelete(obj interface{}) {
 	ip := obj.(*inwinv1.IP).DeepCopy()
-	glog.V(2).Infof("IP %s has deleted.", ip.Name)
+	glog.V(2).Infof("Received delete on IP %s in %s namespace.", ip.Name, ip.Namespace)
 
 	if ip.Status.Phase == inwinv1.IPActive {
 		if err := c.deallocate(ip); err != nil {
-			glog.Errorf("Failed to deallocate IP for %s : %+v.", ip.Name, err)
+			glog.Errorf("Failed to deallocate IP for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
 		}
 
 		if err := c.makeNamespaceRefresh(ip); err != nil {
-			glog.Errorf("Failed to update namespace annotations for %s : %+v.", ip.Name, err)
+			glog.Errorf("Failed to update namespace annotations for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
 		}
 	}
 }

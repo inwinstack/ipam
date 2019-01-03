@@ -24,10 +24,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	inwinclientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
+	clientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
 	"github.com/inwinstack/ipam/pkg/k8sutil"
 	"github.com/inwinstack/ipam/pkg/operator/ip"
-	"github.com/inwinstack/ipam/pkg/operator/namespace"
 	"github.com/inwinstack/ipam/pkg/operator/pool"
 	opkit "github.com/inwinstack/operator-kit"
 	apiextensionsclients "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -35,21 +34,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type Flag struct {
-	Kubeconfig                string
-	Address                   string
-	IgnoreNamespaces          []string
-	IgnoreNamespaceAnnotation bool
-	AutoAssignToNamespace     bool
-}
-
 type Operator struct {
+	kubeconfig string
+
 	ctx       *opkit.Context
-	namespace *namespace.NamespaceController
 	pool      *pool.PoolController
 	ip        *ip.IPController
 	resources []opkit.CustomResource
-	flag      *Flag
 }
 
 const (
@@ -58,32 +49,30 @@ const (
 	timeout        = 60 * time.Second
 )
 
-func NewMainOperator(flag *Flag) *Operator {
+func NewMainOperator(kubeconfig string) *Operator {
 	return &Operator{
-		resources: []opkit.CustomResource{pool.Resource, ip.Resource},
-		flag:      flag,
+		resources:  []opkit.CustomResource{pool.Resource, ip.Resource},
+		kubeconfig: kubeconfig,
 	}
 }
 
 func (o *Operator) Initialize() error {
 	glog.V(2).Info("Initialize the operator resources.")
 
-	ctx, clientset, err := o.initContextAndClient()
+	ctx, blendedClient, err := o.initContextAndClient()
 	if err != nil {
 		return err
 	}
-
-	o.namespace = namespace.NewController(ctx, clientset)
-	o.pool = pool.NewController(ctx, clientset)
-	o.ip = ip.NewController(ctx, clientset)
+	o.pool = pool.NewController(ctx, blendedClient)
+	o.ip = ip.NewController(ctx, blendedClient)
 	o.ctx = ctx
 	return nil
 }
 
-func (o *Operator) initContextAndClient() (*opkit.Context, inwinclientset.InwinstackV1Interface, error) {
+func (o *Operator) initContextAndClient() (*opkit.Context, clientset.InwinstackV1Interface, error) {
 	glog.V(2).Info("Initialize the operator context and client.")
 
-	config, err := k8sutil.GetRestConfig(o.flag.Kubeconfig)
+	config, err := k8sutil.GetRestConfig(o.kubeconfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to get Kubernetes config. %+v", err)
 	}
@@ -93,23 +82,23 @@ func (o *Operator) initContextAndClient() (*opkit.Context, inwinclientset.Inwins
 		return nil, nil, fmt.Errorf("Failed to get Kubernetes client. %+v", err)
 	}
 
-	extensionsclient, err := apiextensionsclients.NewForConfig(config)
+	extensionsClient, err := apiextensionsclients.NewForConfig(config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to create Kubernetes API extension clientset. %+v", err)
 	}
 
-	inwinclient, err := inwinclientset.NewForConfig(config)
+	blendedClient, err := clientset.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to create pan-operator clientset. %+v", err)
+		return nil, nil, fmt.Errorf("Failed to create blended clientset. %+v", err)
 	}
 
 	ctx := &opkit.Context{
 		Clientset:             client,
-		APIExtensionClientset: extensionsclient,
+		APIExtensionClientset: extensionsClient,
 		Interval:              interval,
 		Timeout:               timeout,
 	}
-	return ctx, inwinclient, nil
+	return ctx, blendedClient, nil
 }
 
 func (o *Operator) initResources() error {
@@ -145,19 +134,6 @@ func (o *Operator) Run() error {
 	// start watching the custom resources
 	o.ip.StartWatch(v1.NamespaceAll, stopChan)
 	o.pool.StartWatch(v1.NamespaceAll, stopChan)
-
-	// init the custom resources
-	err := o.pool.CreateDefaultPool(
-		o.flag.Address,
-		o.flag.IgnoreNamespaces,
-		o.flag.AutoAssignToNamespace,
-		o.flag.IgnoreNamespaceAnnotation)
-	if err != nil {
-		return fmt.Errorf("Failed to create default IP pool. %+v", err)
-	}
-
-	// start watching the resources
-	o.namespace.StartWatch(v1.NamespaceAll, stopChan)
 
 	for {
 		select {
