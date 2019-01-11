@@ -109,14 +109,16 @@
   version = "v0.3.6"
 
 [[projects]]
-  digest = "1:54ab89512689b6c072dceb0a0d0fd7cc6caad4dff2a399686c7cee6942aaa1d4"
+  digest = "1:32e6a0b26c52758390a72be9e2a0606ec142a0cefcce74d7b62e00a6d2ff3179"
   name = "github.com/inwinstack/blended"
   packages = [
     "apis/inwinstack",
     "apis/inwinstack/v1",
     "client/clientset/versioned",
+    "client/clientset/versioned/fake",
     "client/clientset/versioned/scheme",
     "client/clientset/versioned/typed/inwinstack/v1",
+    "client/clientset/versioned/typed/inwinstack/v1/fake",
   ]
   pruneopts = "UT"
   revision = "792180b3d77b89a66627003e5a12a57c1fa1c3f2"
@@ -129,14 +131,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "183b801f95579b01eb29cd70276ddd15cd685fe1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:fa372d157c9aadb6178ca4bd9a77d780c16f6c9326413e9fe8627423d19155b5"
-  name = "github.com/inwinstack/pa-controller"
-  packages = ["pkg/config"]
-  pruneopts = "UT"
-  revision = "c23c19c96e7b5508633ddf3ba53525a4c97bb05d"
 
 [[projects]]
   digest = "1:3e551bbb3a7c0ab2a2bf4660e7fcad16db089fdcfbb44b0199e62838038623ea"
@@ -505,8 +499,8 @@
     "github.com/golang/glog",
     "github.com/inwinstack/blended/apis/inwinstack/v1",
     "github.com/inwinstack/blended/client/clientset/versioned",
+    "github.com/inwinstack/blended/client/clientset/versioned/fake",
     "github.com/inwinstack/operator-kit",
-    "github.com/inwinstack/pa-controller/pkg/config",
     "github.com/mikioh/ipaddr",
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
