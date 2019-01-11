@@ -67,14 +67,6 @@
   revision = "24818f796faf91cd76ec7bddd72458fbced7a6c1"
 
 [[projects]]
-  digest = "1:236d7e1bdb50d8f68559af37dbcf9d142d56b431c9b2176d41e2a009b664cda8"
-  name = "github.com/google/uuid"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9b3b1e0f5f99ae461456d768e7d301a7acdaa2d8"
-  version = "v1.1.0"
-
-[[projects]]
   digest = "1:65c4414eeb350c47b8de71110150d0ea8a281835b1f386eacaa3ad7325929c21"
   name = "github.com/googleapis/gnostic"
   packages = [
@@ -117,11 +109,12 @@
   version = "v0.3.6"
 
 [[projects]]
-  digest = "1:798bcddde4b0be7ea2319a245676afeaef12d2a284a87cf6f0182435087e32a7"
+  digest = "1:54ab89512689b6c072dceb0a0d0fd7cc6caad4dff2a399686c7cee6942aaa1d4"
   name = "github.com/inwinstack/blended"
   packages = [
     "apis/inwinstack",
     "apis/inwinstack/v1",
+    "client/clientset/versioned",
     "client/clientset/versioned/scheme",
     "client/clientset/versioned/typed/inwinstack/v1",
   ]
@@ -168,14 +161,6 @@
   pruneopts = "UT"
   revision = "4b7aa43c6742a2c18fdef89dd197aaae7dac7ccd"
   version = "1.0.1"
-
-[[projects]]
-  digest = "1:e5d0bd87abc2781d14e274807a470acd180f0499f8bf5bb18606e9ec22ad9de9"
-  name = "github.com/pborman/uuid"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "adf5a7427709b9deb95d29d3fa8a2bf9cfd388f1"
-  version = "v1.2"
 
 [[projects]]
   branch = "master"
@@ -349,7 +334,7 @@
   version = "kubernetes-1.11.0"
 
 [[projects]]
-  digest = "1:9c8f60d5f84006d428016ea5c5485a73d747077411da5f5942cb360c58933e06"
+  digest = "1:3e5d6f34fefbb0169943b5a167de9b2443f695e436e96f9ba0f1050c29799250"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/errors",
@@ -383,7 +368,6 @@
     "pkg/util/net",
     "pkg/util/runtime",
     "pkg/util/sets",
-    "pkg/util/uuid",
     "pkg/util/validation",
     "pkg/util/validation/field",
     "pkg/util/wait",
@@ -467,6 +451,7 @@
   input-imports = [
     "github.com/golang/glog",
     "github.com/inwinstack/blended/apis/inwinstack/v1",
+    "github.com/inwinstack/blended/client/clientset/versioned",
     "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1",
     "github.com/inwinstack/operator-kit",
     "github.com/mikioh/ipaddr",
@@ -476,8 +461,6 @@
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
     "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
-    "k8s.io/apimachinery/pkg/runtime/schema",
-    "k8s.io/apimachinery/pkg/util/uuid",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/tools/cache",

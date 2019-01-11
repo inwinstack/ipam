@@ -23,7 +23,7 @@ import (
 
 	"github.com/golang/glog"
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
-	clientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
+	clientset "github.com/inwinstack/blended/client/clientset/versioned"
 	"github.com/inwinstack/ipam/pkg/util"
 	opkit "github.com/inwinstack/operator-kit"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -47,10 +47,10 @@ var Resource = opkit.CustomResource{
 
 type PoolController struct {
 	ctx       *opkit.Context
-	clientset clientset.InwinstackV1Interface
+	clientset clientset.Interface
 }
 
-func NewController(ctx *opkit.Context, clientset clientset.InwinstackV1Interface) *PoolController {
+func NewController(ctx *opkit.Context, clientset clientset.Interface) *PoolController {
 	return &PoolController{ctx: ctx, clientset: clientset}
 }
 
@@ -62,7 +62,7 @@ func (c *PoolController) StartWatch(namespace string, stopCh chan struct{}) erro
 	}
 
 	glog.Infof("Start watching pool resources.")
-	watcher := opkit.NewWatcher(Resource, namespace, resourceHandlerFuncs, c.clientset.RESTClient())
+	watcher := opkit.NewWatcher(Resource, namespace, resourceHandlerFuncs, c.clientset.InwinstackV1().RESTClient())
 	go watcher.Watch(&inwinv1.Pool{}, stopCh)
 	return nil
 }
@@ -104,7 +104,7 @@ func (c *PoolController) makeStatus(pool *inwinv1.Pool) error {
 		pool.Status.AllocatedIPs = []string{}
 		pool.Status.Phase = inwinv1.PoolActive
 		pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
-		if _, err := c.clientset.Pools().Update(pool); err != nil {
+		if _, err := c.clientset.InwinstackV1().Pools().Update(pool); err != nil {
 			return err
 		}
 	}
