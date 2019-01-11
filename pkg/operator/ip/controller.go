@@ -23,7 +23,7 @@ import (
 
 	"github.com/golang/glog"
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
-	clientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
+	clientset "github.com/inwinstack/blended/client/clientset/versioned"
 	"github.com/inwinstack/ipam/pkg/constants"
 	"github.com/inwinstack/ipam/pkg/util"
 	"github.com/inwinstack/ipam/pkg/util/slice"
@@ -50,10 +50,10 @@ var Resource = opkit.CustomResource{
 
 type IPController struct {
 	ctx       *opkit.Context
-	clientset clientset.InwinstackV1Interface
+	clientset clientset.Interface
 }
 
-func NewController(ctx *opkit.Context, clientset clientset.InwinstackV1Interface) *IPController {
+func NewController(ctx *opkit.Context, clientset clientset.Interface) *IPController {
 	return &IPController{ctx: ctx, clientset: clientset}
 }
 
@@ -65,7 +65,7 @@ func (c *IPController) StartWatch(namespace string, stopCh chan struct{}) error 
 	}
 
 	glog.Infof("Start watching IP resources.")
-	watcher := opkit.NewWatcher(Resource, namespace, resourceHandlerFuncs, c.clientset.RESTClient())
+	watcher := opkit.NewWatcher(Resource, namespace, resourceHandlerFuncs, c.clientset.InwinstackV1().RESTClient())
 	go watcher.Watch(&inwinv1.IP{}, stopCh)
 	return nil
 }
@@ -108,7 +108,7 @@ func (c *IPController) onDelete(obj interface{}) {
 }
 
 func (c *IPController) allocate(ip *inwinv1.IP) error {
-	pool, err := c.clientset.Pools().Get(ip.Spec.PoolName, metav1.GetOptions{})
+	pool, err := c.clientset.InwinstackV1().Pools().Get(ip.Spec.PoolName, metav1.GetOptions{})
 	if err != nil {
 		return c.makeFailedStatus(ip, err)
 	}
@@ -132,7 +132,7 @@ func (c *IPController) allocate(ip *inwinv1.IP) error {
 			pool.Status.AllocatedIPs = append(pool.Status.AllocatedIPs, ips[0])
 			pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
 			pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
-			if _, err := c.clientset.Pools().Update(pool); err != nil {
+			if _, err := c.clientset.InwinstackV1().Pools().Update(pool); err != nil {
 				return c.makeFailedStatus(ip, err)
 			}
 		}
@@ -143,14 +143,14 @@ func (c *IPController) allocate(ip *inwinv1.IP) error {
 	}
 
 	ip.Status.LastUpdateTime = metav1.NewTime(time.Now())
-	if _, err := c.clientset.IPs(ip.Namespace).Update(ip); err != nil {
+	if _, err := c.clientset.InwinstackV1().IPs(ip.Namespace).Update(ip); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (c *IPController) deallocate(ip *inwinv1.IP) error {
-	pool, err := c.clientset.Pools().Get(ip.Spec.PoolName, metav1.GetOptions{})
+	pool, err := c.clientset.InwinstackV1().Pools().Get(ip.Spec.PoolName, metav1.GetOptions{})
 	if err != nil {
 		return c.makeFailedStatus(ip, err)
 	}
@@ -159,7 +159,7 @@ func (c *IPController) deallocate(ip *inwinv1.IP) error {
 		pool.Status.AllocatedIPs = slice.RemoveItem(pool.Status.AllocatedIPs, ip.Status.Address)
 		pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
 		pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
-		if _, err := c.clientset.Pools().Update(pool); err != nil {
+		if _, err := c.clientset.InwinstackV1().Pools().Update(pool); err != nil {
 			return c.makeFailedStatus(ip, err)
 		}
 	}
@@ -188,7 +188,7 @@ func (c *IPController) makeFailedStatus(ip *inwinv1.IP, e error) error {
 	ip.Status.Phase = inwinv1.IPFailed
 	ip.Status.Reason = e.Error()
 	ip.Status.LastUpdateTime = metav1.NewTime(time.Now())
-	if _, err := c.clientset.IPs(ip.Namespace).Update(ip); err != nil {
+	if _, err := c.clientset.InwinstackV1().IPs(ip.Namespace).Update(ip); err != nil {
 		return err
 	}
 	return nil

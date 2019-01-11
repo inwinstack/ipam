@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	clientset "github.com/inwinstack/blended/client/clientset/versioned/typed/inwinstack/v1"
+	clientset "github.com/inwinstack/blended/client/clientset/versioned"
 	"github.com/inwinstack/ipam/pkg/k8sutil"
 	"github.com/inwinstack/ipam/pkg/operator/ip"
 	"github.com/inwinstack/ipam/pkg/operator/pool"
@@ -69,7 +69,7 @@ func (o *Operator) Initialize() error {
 	return nil
 }
 
-func (o *Operator) initContextAndClient() (*opkit.Context, clientset.InwinstackV1Interface, error) {
+func (o *Operator) initContextAndClient() (*opkit.Context, clientset.Interface, error) {
 	glog.V(2).Info("Initialize the operator context and client.")
 
 	config, err := k8sutil.GetRestConfig(o.kubeconfig)
