@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/inwinstack/ipam.svg?branch=master)](https://travis-ci.org/inwinstack/ipam) [![Docker Build Status](https://img.shields.io/docker/build/inwinstack/ipam.svg)](https://hub.docker.com/r/inwinstack/ipam/) [![codecov](https://codecov.io/gh/inwinstack/ipam/branch/master/graph/badge.svg)](https://codecov.io/gh/inwinstack/ipam) ![Hex.pm](https://img.shields.io/hexpm/l/plug.svg)
+[![Build Status](https://travis-ci.org/inwinstack/ipam.svg?branch=master)](https://travis-ci.org/inwinstack/ipam) [![codecov](https://codecov.io/gh/inwinstack/ipam/branch/master/graph/badge.svg)](https://codecov.io/gh/inwinstack/ipam) [![Docker Pulls](https://img.shields.io/docker/pulls/inwinstack/ipam.svg)](https://hub.docker.com/r/inwinstack/ipam/) ![Hex.pm](https://img.shields.io/hexpm/l/plug.svg)
 # IPAM 
 The IPAM provides `Pool` and `IP` custom resource to take care of assigning and unassigning individual addresses from pools because Kubernetes cannot create IP addresses out of thin air, so we need to give it CRDs that it can use. 
 
