@@ -82,11 +82,22 @@ func (c *IPController) onAdd(obj interface{}) {
 }
 
 func (c *IPController) onUpdate(oldObj, newObj interface{}) {
+	old := oldObj.(*inwinv1.IP).DeepCopy()
 	ip := newObj.(*inwinv1.IP).DeepCopy()
 	glog.V(2).Infof("Received update on IP %s in namespace %s.", ip.Name, ip.Namespace)
 
+	if old.Spec.PoolName != ip.Spec.PoolName {
+		if err := c.allocate(ip); err != nil {
+			glog.Errorf("Failed to allocate new IP for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
+		}
+
+		if err := c.deallocate(old); err != nil {
+			glog.Errorf("Failed to deallocate old IP for %s in %s namespace: %+v.", old.Name, old.Namespace, err)
+		}
+	}
+
 	if ip.Status.Phase == inwinv1.IPActive {
-		if err := c.makeNamespaceRefresh(ip); err != nil {
+		if err := c.markNamespaceRefresh(ip); err != nil {
 			glog.Errorf("Failed to update namespace annotations for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
 		}
 	}
@@ -101,10 +112,29 @@ func (c *IPController) onDelete(obj interface{}) {
 			glog.Errorf("Failed to deallocate IP for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
 		}
 
-		if err := c.makeNamespaceRefresh(ip); err != nil {
+		if err := c.markNamespaceRefresh(ip); err != nil {
 			glog.Errorf("Failed to update namespace annotations for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
 		}
 	}
+}
+
+func (c *IPController) makeFailedStatus(ip *inwinv1.IP, e error) error {
+	ip.Status.Phase = inwinv1.IPFailed
+	ip.Status.Reason = fmt.Sprintf("%+v.", e)
+	ip.Status.Address = ""
+	ip.Status.LastUpdateTime = metav1.NewTime(time.Now())
+	if _, err := c.clientset.InwinstackV1().IPs(ip.Namespace).Update(ip); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *IPController) updatePool(pool *inwinv1.Pool) error {
+	pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
+	if _, err := c.clientset.InwinstackV1().Pools().Update(pool); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *IPController) allocate(ip *inwinv1.IP) error {
@@ -113,35 +143,35 @@ func (c *IPController) allocate(ip *inwinv1.IP) error {
 		return c.makeFailedStatus(ip, err)
 	}
 
-	ip.Status.Phase = inwinv1.IPFailed
-	if pool.Status.Phase == inwinv1.PoolActive {
-		nets, _ := util.ParseCIDR(pool.Spec.Address)
-
-		var ips []string
-		for _, net := range nets {
-			ips = append([]string{}, append(ips, util.GetAllIP(net)...)...)
-		}
-
-		// Filter allocated IPs
-		ips = slice.RemoveItems(ips, pool.Status.AllocatedIPs)
-
-		if len(ips) != 0 {
-			ip.Status.Address = ips[0]
-			ip.Status.Ports = []int{}
-			ip.Status.Phase = inwinv1.IPActive
-			pool.Status.AllocatedIPs = append(pool.Status.AllocatedIPs, ips[0])
-			pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
-			pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
-			if _, err := c.clientset.InwinstackV1().Pools().Update(pool); err != nil {
-				return c.makeFailedStatus(ip, err)
-			}
-		}
-
-		if len(ips) == 0 {
-			ip.Status.Reason = fmt.Sprintf("Pool \"%s\" has been exhausted for IP", pool.Name)
-		}
+	if pool.Status.Phase == inwinv1.PoolFailed {
+		err := fmt.Errorf("Unable to allocate IP from failed pool")
+		return c.makeFailedStatus(ip, err)
 	}
 
+	if pool.Status.Allocatable == 0 {
+		err := fmt.Errorf("The pool \"%s\" has been exhausted", pool.Name)
+		return c.makeFailedStatus(ip, err)
+	}
+
+	np := util.NewNetworkParser(pool.Spec.Addresses, pool.Spec.AvoidBuggyIPs, pool.Spec.AvoidGatewayIPs)
+	ips, _ := np.IPs()
+
+	// Filter by pool spec filter IPs
+	if pool.Spec.FilterIPs != nil {
+		ips = slice.RemoveItems(ips, pool.Spec.FilterIPs)
+	}
+
+	// Filter by allocated IPs
+	ips = slice.RemoveItems(ips, pool.Status.AllocatedIPs)
+
+	pool.Status.AllocatedIPs = append(pool.Status.AllocatedIPs, ips[0])
+	pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
+	if err := c.updatePool(pool); err != nil {
+		return c.makeFailedStatus(ip, err)
+	}
+
+	ip.Status.Address = ips[0]
+	ip.Status.Phase = inwinv1.IPActive
 	ip.Status.LastUpdateTime = metav1.NewTime(time.Now())
 	if _, err := c.clientset.InwinstackV1().IPs(ip.Namespace).Update(ip); err != nil {
 		return err
@@ -158,16 +188,15 @@ func (c *IPController) deallocate(ip *inwinv1.IP) error {
 	if pool.Status.Phase == inwinv1.PoolActive {
 		pool.Status.AllocatedIPs = slice.RemoveItem(pool.Status.AllocatedIPs, ip.Status.Address)
 		pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
-		pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
-		if _, err := c.clientset.InwinstackV1().Pools().Update(pool); err != nil {
+		if err := c.updatePool(pool); err != nil {
 			return c.makeFailedStatus(ip, err)
 		}
 	}
 	return nil
 }
 
-func (c *IPController) makeNamespaceRefresh(ip *inwinv1.IP) error {
-	if ip.Spec.UpdateNamespace {
+func (c *IPController) markNamespaceRefresh(ip *inwinv1.IP) error {
+	if ip.Spec.MarkNamespaceRefresh {
 		ns, err := c.ctx.Clientset.CoreV1().Namespaces().Get(ip.Namespace, metav1.GetOptions{})
 		if err != nil {
 			// When a namespace has been deleted, we don't do anything
@@ -180,16 +209,6 @@ func (c *IPController) makeNamespaceRefresh(ip *inwinv1.IP) error {
 				return err
 			}
 		}
-	}
-	return nil
-}
-
-func (c *IPController) makeFailedStatus(ip *inwinv1.IP, e error) error {
-	ip.Status.Phase = inwinv1.IPFailed
-	ip.Status.Reason = e.Error()
-	ip.Status.LastUpdateTime = metav1.NewTime(time.Now())
-	if _, err := c.clientset.InwinstackV1().IPs(ip.Namespace).Update(ip); err != nil {
-		return err
 	}
 	return nil
 }

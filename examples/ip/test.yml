@@ -1,34 +1,6 @@
 apiVersion: inwinstack.com/v1
 kind: IP
 metadata:
-  name: test-ip-1
-spec:
-  poolName: test
----
-apiVersion: inwinstack.com/v1
-kind: IP
-metadata:
-  name: test-ip-2
-spec:
-  poolName: test
----
-apiVersion: inwinstack.com/v1
-kind: IP
-metadata:
-  name: test-ip-3
-spec:
-  poolName: test
----
-apiVersion: inwinstack.com/v1
-kind: IP
-metadata:
-  name: test-ip-4
-spec:
-  poolName: test
----
-apiVersion: inwinstack.com/v1
-kind: IP
-metadata:
-  name: test-ip-5
+  name: test-ip
 spec:
   poolName: test

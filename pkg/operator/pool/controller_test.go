@@ -52,10 +52,11 @@ func TestPoolController(t *testing.T) {
 			Name: "test-pool",
 		},
 		Spec: inwinv1.PoolSpec{
-			Address:                   "172.22.132.150-172.22.132.200",
-			IgnoreNamespaceAnnotation: true,
-			AutoAssignToNamespace:     false,
-			IgnoreNamespaces:          []string{"kube-system", "kube-public", "default"},
+			Addresses:         []string{"172.22.132.0-172.22.132.5"},
+			AssignToNamespace: false,
+			AvoidBuggyIPs:     true,
+			AvoidGatewayIPs:   false,
+			IgnoreNamespaces:  []string{"kube-system", "kube-public", "default"},
 		},
 	}
 
@@ -66,19 +67,28 @@ func TestPoolController(t *testing.T) {
 
 	onAddPool, err := client.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.NotNil(t, onAddPool.Status.Phase, inwinv1.PoolActive)
+	assert.Equal(t, onAddPool.Status.Phase, inwinv1.PoolActive)
 	assert.Equal(t, onAddPool.Status.AllocatedIPs, []string{})
-	assert.Equal(t, onAddPool.Status.Capacity, 51)
-	assert.Equal(t, onAddPool.Status.Allocatable, 51)
+	assert.Equal(t, onAddPool.Status.Capacity, 5)
+	assert.Equal(t, onAddPool.Status.Allocatable, 5)
 
 	// Test onUpdate
-	// TODO: The pool needs to implement onUpdate function.
-	onAddPool.Spec.Address = "172.22.132.0/24"
+	onAddPool.Spec.Addresses = append(onAddPool.Spec.Addresses, "172.22.132.250-172.22.132.255")
 	controller.onUpdate(createPool, onAddPool)
 
 	onUpdatePool, err := client.InwinstackV1().Pools().Get(onAddPool.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
+	assert.Equal(t, onUpdatePool.Status.Capacity, 10)
+	assert.Equal(t, onUpdatePool.Status.Allocatable, 10)
 
-	// Test onDelete
-	controller.onDelete(onUpdatePool)
+	// Test onUpdate failed
+	onUpdatePool.Spec.Addresses = []string{"172.22.132.250-172.22.132.267"}
+	controller.onUpdate(onAddPool, onUpdatePool)
+
+	onUpdateFailedPool, err := client.InwinstackV1().Pools().Get(onAddPool.Name, metav1.GetOptions{})
+	assert.Nil(t, err)
+	assert.Equal(t, onUpdateFailedPool.Status.Phase, inwinv1.PoolFailed)
+	assert.Equal(t, onUpdateFailedPool.Status.Capacity, 0)
+	assert.Equal(t, onUpdateFailedPool.Status.Allocatable, 0)
+	assert.NotNil(t, onUpdateFailedPool.Status.Reason)
 }

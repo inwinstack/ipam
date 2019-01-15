@@ -22,7 +22,7 @@ spec:
       serviceAccountName: ipam
       containers:
       - name: ipam-controller
-        image: inwinstack/ipam:v0.5.0
+        image: inwinstack/ipam:v0.6.0
         args:
         - --logtostderr=true
         - --v=2
