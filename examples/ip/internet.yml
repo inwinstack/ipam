@@ -5,4 +5,4 @@ metadata:
   namespace: test
 spec:
   poolName: internet
-  updateNamespace: false
+  markNamespaceRefresh: false

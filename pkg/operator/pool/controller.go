@@ -25,6 +25,7 @@ import (
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
 	clientset "github.com/inwinstack/blended/client/clientset/versioned"
 	"github.com/inwinstack/ipam/pkg/util"
+	"github.com/inwinstack/ipam/pkg/util/slice"
 	opkit "github.com/inwinstack/operator-kit"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,7 +59,6 @@ func (c *PoolController) StartWatch(namespace string, stopCh chan struct{}) erro
 	resourceHandlerFuncs := cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.onAdd,
 		UpdateFunc: c.onUpdate,
-		DeleteFunc: c.onDelete,
 	}
 
 	glog.Infof("Start watching pool resources.")
@@ -72,41 +72,62 @@ func (c *PoolController) onAdd(obj interface{}) {
 	glog.V(2).Infof("Received add on Pool %s.", pool.Name)
 
 	if err := c.makeStatus(pool); err != nil {
-		glog.Errorf("Failed to init status in %s pool: %+v.", pool.Name, err)
+		glog.Errorf("Failed to init status on Pool %s: %+v.", pool.Name, err)
 	}
 }
 
 func (c *PoolController) onUpdate(oldObj, newObj interface{}) {
+	old := oldObj.(*inwinv1.Pool).DeepCopy()
 	pool := newObj.(*inwinv1.Pool).DeepCopy()
 	glog.V(2).Infof("Received update on Pool %s.", pool.Name)
+
+	if !reflect.DeepEqual(old.Spec, pool.Spec) {
+		if err := c.updateStatus(pool); err != nil {
+			glog.Errorf("Failed to update status on Pool %s: %+v.", pool.Name, err)
+		}
+	}
 }
 
-func (c *PoolController) onDelete(obj interface{}) {
-	pool := obj.(*inwinv1.Pool).DeepCopy()
-	glog.V(2).Infof("Received delete on Pool %s .", pool.Name)
+func (c *PoolController) setStatus(init bool, pool *inwinv1.Pool) error {
+	pool.Status.Phase = inwinv1.PoolActive
+
+	np := util.NewNetworkParser(pool.Spec.Addresses, pool.Spec.AvoidBuggyIPs, pool.Spec.AvoidGatewayIPs)
+	ips, err := np.IPs()
+	if err != nil {
+		pool.Status.Phase = inwinv1.PoolFailed
+		pool.Status.Reason = fmt.Sprintf("%+v.", err)
+	}
+
+	if pool.Spec.FilterIPs != nil {
+		ips = slice.RemoveItems(ips, pool.Spec.FilterIPs)
+	}
+
+	if init {
+		pool.Status.AllocatedIPs = []string{}
+	}
+
+	if pool.Status.Phase == inwinv1.PoolActive {
+		pool.Status.Reason = ""
+	}
+
+	pool.Status.Capacity = len(ips)
+	pool.Status.Allocatable = len(ips)
+	pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
+	if _, err := c.clientset.InwinstackV1().Pools().Update(pool); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *PoolController) makeStatus(pool *inwinv1.Pool) error {
 	if pool.Status.Capacity == 0 && pool.Status.Phase != inwinv1.PoolActive {
-		nets, err := util.ParseCIDR(pool.Spec.Address)
-		if err != nil {
-			pool.Status.Phase = inwinv1.PoolFailed
-			pool.Status.Reason = fmt.Sprintf("Invalid parse CIDR from %s.", pool.Spec.Address)
-		}
-
-		var ips []string
-		for _, net := range nets {
-			ips = append([]string{}, append(ips, util.GetAllIP(net)...)...)
-		}
-
-		pool.Status.Capacity = len(ips)
-		pool.Status.Allocatable = len(ips)
-		pool.Status.AllocatedIPs = []string{}
-		pool.Status.Phase = inwinv1.PoolActive
-		pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
-		if _, err := c.clientset.InwinstackV1().Pools().Update(pool); err != nil {
+		if err := c.setStatus(true, pool); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (c *PoolController) updateStatus(pool *inwinv1.Pool) error {
+	return c.setStatus(false, pool)
 }

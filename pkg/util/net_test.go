@@ -17,77 +17,37 @@ limitations under the License.
 package util
 
 import (
-	"fmt"
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseCIDR(t *testing.T) {
-	tests := map[string][]string{
-		"172.22.132.0/24": {
-			"172.22.132.0/24",
+func TestNetworkParser(t *testing.T) {
+	tests := []struct {
+		NetworkParser *NetworkParser
+		IPs           []string
+	}{
+		{
+			NetworkParser: NewNetworkParser([]string{"172.22.132.0/30"}, true, true),
+			IPs:           []string{"172.22.132.2", "172.22.132.3"},
 		},
-		"172.22.132.50-172.22.132.60": {
-			"172.22.132.50/31",
-			"172.22.132.52/30",
-			"172.22.132.56/30",
-			"172.22.132.60/32",
+		{
+			NetworkParser: NewNetworkParser([]string{"172.22.132.0/30"}, true, false),
+			IPs:           []string{"172.22.132.1", "172.22.132.2", "172.22.132.3"},
 		},
-	}
-
-	for param, results := range tests {
-		nets, err := ParseCIDR(param)
-		if err != nil {
-			assert.Error(t, err)
-		}
-
-		if len(results) != len(nets) {
-			assert.Error(t, fmt.Errorf("Wrong parsed nets. Expected %d, got %d", len(results), len(nets)))
-		}
-
-		for index, net := range nets {
-			assert.Equal(t, results[index], net.String())
-		}
-	}
-}
-
-func TestGetAllIP(t *testing.T) {
-	tests := map[string][]string{
-		"172.22.132.50/31": {
-			"172.22.132.50",
-			"172.22.132.51",
+		{
+			NetworkParser: NewNetworkParser([]string{"172.22.132.0/30"}, false, true),
+			IPs:           []string{"172.22.132.0", "172.22.132.2", "172.22.132.3"},
 		},
-		"172.22.132.56/30": {
-			"172.22.132.56",
-			"172.22.132.57",
-			"172.22.132.58",
-			"172.22.132.59",
+		{
+			NetworkParser: NewNetworkParser([]string{"172.22.132.0/30"}, false, false),
+			IPs:           []string{"172.22.132.0", "172.22.132.1", "172.22.132.2", "172.22.132.3"},
 		},
 	}
 
-	for param, results := range tests {
-		_, net, err := net.ParseCIDR(param)
-		if err != nil {
-			assert.Error(t, err)
-		}
-
-		ips := GetAllIP(net)
-		assert.Equal(t, results, ips)
-	}
-}
-
-func TestParseIPs(t *testing.T) {
-	tests := map[string][]string{
-		"172.22.132.10,172.22.132.11": {
-			"172.22.132.10",
-			"172.22.132.11",
-		},
-	}
-
-	for param, results := range tests {
-		ips := ParseIPs(param)
-		assert.Equal(t, results, ips)
+	for _, test := range tests {
+		ips, err := test.NetworkParser.IPs()
+		assert.Nil(t, err)
+		assert.Equal(t, test.IPs, ips)
 	}
 }

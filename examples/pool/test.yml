@@ -3,9 +3,12 @@ kind: Pool
 metadata:
   name: test
 spec:
-  address: 172.22.132.200/30
-  ignoreNamespaceAnnotation: false
-  autoAssignToNamespace: true
+  addresses: 
+  - 172.22.132.0-172.22.132.10
+  - 172.22.132.250-172.22.132.255
+  assignToNamespace: false
+  avoidBuggyIPs: true
+  avoidGatewayIPs: true
   ignoreNamespaces:
   - kube-system
   - kube-public

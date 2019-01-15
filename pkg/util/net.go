@@ -24,7 +24,21 @@ import (
 	"github.com/mikioh/ipaddr"
 )
 
-func ParseCIDR(cidr string) ([]*net.IPNet, error) {
+type NetworkParser struct {
+	Addresses    []string
+	AvoidBuggy   bool
+	AvoidGateway bool
+}
+
+func NewNetworkParser(addrs []string, buggy, gateway bool) *NetworkParser {
+	return &NetworkParser{
+		Addresses:    addrs,
+		AvoidBuggy:   buggy,
+		AvoidGateway: gateway,
+	}
+}
+
+func (p *NetworkParser) getIPNets(cidr string) ([]*net.IPNet, error) {
 	if !strings.Contains(cidr, "-") {
 		_, n, err := net.ParseCIDR(cidr)
 		if err != nil {
@@ -59,27 +73,21 @@ func ParseCIDR(cidr string) ([]*net.IPNet, error) {
 	return ret, nil
 }
 
-func GetAllIP(ipnet *net.IPNet) []string {
-	var ips []string
-	for ip := ipnet.IP.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
-		if !isFilterIP(ip.String()) {
-			ips = append(ips, ip.String())
+func (p *NetworkParser) isGatewayIP(v string) bool {
+	gatewayIPs := []string{"1", "254"}
+	fs := strings.SplitN(v, ".", 4)
+	for _, ip := range gatewayIPs {
+		if fs[3] == ip {
+			return true
 		}
 	}
-	return ips
+	return false
 }
 
-func ParseIPs(v string) []string {
-	if v == "" {
-		return []string{}
-	}
-	return strings.Split(v, ",")
-}
-
-func isFilterIP(v string) bool {
-	ips := []string{"0", "1", "254", "255"}
+func (p *NetworkParser) isBuggyIP(v string) bool {
+	buggyIPs := []string{"0", "255"}
 	fs := strings.SplitN(v, ".", 4)
-	for _, ip := range ips {
+	for _, ip := range buggyIPs {
 		if fs[3] == ip {
 			return true
 		}
@@ -94,4 +102,34 @@ func inc(ip net.IP) {
 			break
 		}
 	}
+}
+
+func (p *NetworkParser) getIPs(ipnet *net.IPNet) []string {
+	var ips []string
+	for ip := ipnet.IP.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
+		if p.AvoidBuggy && p.isBuggyIP(ip.String()) {
+			continue
+		}
+
+		if p.AvoidGateway && p.isGatewayIP(ip.String()) {
+			continue
+		}
+		ips = append(ips, ip.String())
+	}
+	return ips
+}
+
+func (p *NetworkParser) IPs() ([]string, error) {
+	var ips []string
+	for _, address := range p.Addresses {
+		nets, err := p.getIPNets(address)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid parse CIDR from %+v", address)
+		}
+
+		for _, net := range nets {
+			ips = append([]string{}, append(ips, p.getIPs(net)...)...)
+		}
+	}
+	return ips, nil
 }

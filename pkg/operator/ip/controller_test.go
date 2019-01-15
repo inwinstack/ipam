@@ -40,15 +40,14 @@ func TestIPController(t *testing.T) {
 	coreClient := corefake.NewSimpleClientset()
 	extensionsClient := extensionsfake.NewSimpleClientset()
 
-	pool := &inwinv1.Pool{
+	test := &inwinv1.Pool{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
 		Spec: inwinv1.PoolSpec{
-			Address:                   "172.22.132.150-172.22.132.200",
-			IgnoreNamespaceAnnotation: false,
-			AutoAssignToNamespace:     false,
-			IgnoreNamespaces:          []string{"kube-system", "kube-public", "default"},
+			Addresses:         []string{"172.22.132.150-172.22.132.200"},
+			AssignToNamespace: false,
+			IgnoreNamespaces:  []string{"kube-system", "kube-public", "default"},
 		},
 		Status: inwinv1.PoolStatus{
 			Phase:          inwinv1.PoolActive,
@@ -59,8 +58,29 @@ func TestIPController(t *testing.T) {
 		},
 	}
 
-	createPool, err := client.InwinstackV1().Pools().Create(pool)
-	assert.Nil(t, err)
+	_, testerr := client.InwinstackV1().Pools().Create(test)
+	assert.Nil(t, testerr)
+
+	internet := &inwinv1.Pool{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "internet",
+		},
+		Spec: inwinv1.PoolSpec{
+			Addresses:         []string{"140.145.33.150-140.145.33.200"},
+			AssignToNamespace: false,
+			IgnoreNamespaces:  []string{"kube-system", "kube-public", "default"},
+		},
+		Status: inwinv1.PoolStatus{
+			Phase:          inwinv1.PoolActive,
+			AllocatedIPs:   []string{},
+			Capacity:       51,
+			Allocatable:    51,
+			LastUpdateTime: metav1.NewTime(time.Now()),
+		},
+	}
+
+	_, interneterr := client.InwinstackV1().Pools().Create(internet)
+	assert.Nil(t, interneterr)
 
 	ns := &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -85,12 +105,12 @@ func TestIPController(t *testing.T) {
 	// Test onAdd
 	ip := &inwinv1.IP{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ip-1",
+			Name:      "test-ip",
 			Namespace: namespace,
 		},
 		Spec: inwinv1.IPSpec{
-			PoolName:        createPool.Name,
-			UpdateNamespace: true,
+			PoolName:             test.Name,
+			MarkNamespaceRefresh: true,
 		},
 	}
 	createIP, err := client.InwinstackV1().IPs(namespace).Create(ip)
@@ -100,27 +120,48 @@ func TestIPController(t *testing.T) {
 
 	onAddIP, err := client.InwinstackV1().IPs(namespace).Get(ip.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.NotNil(t, onAddIP.Status.Phase, inwinv1.IPActive)
+	assert.Equal(t, onAddIP.Status.Phase, inwinv1.IPActive)
 	assert.Equal(t, onAddIP.Status.Address, "172.22.132.150")
 
-	onAddPool, err := client.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
+	onAddPool, err := client.InwinstackV1().Pools().Get(test.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
 	assert.Equal(t, onAddPool.Status.AllocatedIPs, []string{"172.22.132.150"})
 	assert.Equal(t, onAddPool.Status.Capacity, 51)
 	assert.Equal(t, onAddPool.Status.Allocatable, 50)
 
 	// Test onUpdate
-	// TODO: The IP needs to implement onUpdate function.
 	controller.onUpdate(createIP, onAddIP)
 
 	onUpdateNs, err := coreClient.CoreV1().Namespaces().Get(ns.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
 	assert.Equal(t, onUpdateNs.Annotations[constants.AnnKeyNamespaceRefresh], "true")
 
-	// Test onUpdate
-	controller.onDelete(onAddIP)
+	// Test onUpdate for change pool
+	onUpdateIP, err := client.InwinstackV1().IPs(namespace).Get(ip.Name, metav1.GetOptions{})
+	assert.Nil(t, err)
 
-	onDeletePool, err := client.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
+	onUpdateIP.Spec.PoolName = internet.Name
+	controller.onUpdate(onAddIP, onUpdateIP)
+
+	onUpdateNewPoolIP, err := client.InwinstackV1().IPs(namespace).Get(ip.Name, metav1.GetOptions{})
+	assert.Nil(t, err)
+	assert.Equal(t, onUpdateNewPoolIP.Status.Phase, inwinv1.IPActive)
+	assert.Equal(t, onUpdateNewPoolIP.Status.Address, "140.145.33.150")
+
+	onUpdateNewTestPool, err := client.InwinstackV1().Pools().Get(test.Name, metav1.GetOptions{})
+	assert.Nil(t, err)
+	assert.Equal(t, onUpdateNewTestPool.Status.AllocatedIPs, []string{})
+	assert.Equal(t, onUpdateNewTestPool.Status.Allocatable, 51)
+
+	onUpdateNewInternetPool, err := client.InwinstackV1().Pools().Get(internet.Name, metav1.GetOptions{})
+	assert.Nil(t, err)
+	assert.Equal(t, onUpdateNewInternetPool.Status.AllocatedIPs, []string{"140.145.33.150"})
+	assert.Equal(t, onUpdateNewInternetPool.Status.Allocatable, 50)
+
+	// Test onDelete
+	controller.onDelete(onUpdateNewPoolIP)
+
+	onDeletePool, err := client.InwinstackV1().Pools().Get(internet.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
 	assert.Equal(t, onDeletePool.Status.AllocatedIPs, []string{})
 	assert.Equal(t, onDeletePool.Status.Capacity, 51)
