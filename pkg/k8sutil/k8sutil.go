@@ -19,8 +19,6 @@ package k8sutil
 import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-
-	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
 )
 
 func GetRestConfig(kubeconfig string) (*rest.Config, error) {
@@ -37,14 +35,4 @@ func GetRestConfig(kubeconfig string) (*rest.Config, error) {
 		return nil, err
 	}
 	return cfg, nil
-}
-
-func FilterIPsByPool(ips *inwinv1.IPList, pool *inwinv1.Pool) {
-	var items []inwinv1.IP
-	for _, ip := range ips.Items {
-		if ip.Spec.PoolName == pool.Name {
-			items = append(items, ip)
-		}
-	}
-	ips.Items = items
 }

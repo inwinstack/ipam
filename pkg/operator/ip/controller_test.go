@@ -22,7 +22,6 @@ import (
 
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
 	fake "github.com/inwinstack/blended/client/clientset/versioned/fake"
-	"github.com/inwinstack/ipam/pkg/constants"
 	opkit "github.com/inwinstack/operator-kit"
 
 	"k8s.io/api/core/v1"
@@ -109,8 +108,7 @@ func TestIPController(t *testing.T) {
 			Namespace: namespace,
 		},
 		Spec: inwinv1.IPSpec{
-			PoolName:             test.Name,
-			MarkNamespaceRefresh: true,
+			PoolName: test.Name,
 		},
 	}
 	createIP, err := client.InwinstackV1().IPs(namespace).Create(ip)
@@ -131,10 +129,6 @@ func TestIPController(t *testing.T) {
 
 	// Test onUpdate
 	controller.onUpdate(createIP, onAddIP)
-
-	onUpdateNs, err := coreClient.CoreV1().Namespaces().Get(ns.Name, metav1.GetOptions{})
-	assert.Nil(t, err)
-	assert.Equal(t, onUpdateNs.Annotations[constants.AnnKeyNamespaceRefresh], "true")
 
 	// Test onUpdate for change pool
 	onUpdateIP, err := client.InwinstackV1().IPs(namespace).Get(ip.Name, metav1.GetOptions{})
