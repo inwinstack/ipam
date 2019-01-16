@@ -172,6 +172,7 @@ func (c *IPController) allocate(ip *inwinv1.IP) error {
 
 	ip.Status.Address = ips[0]
 	ip.Status.Phase = inwinv1.IPActive
+	ip.Status.Reason = ""
 	ip.Status.LastUpdateTime = metav1.NewTime(time.Now())
 	if _, err := c.clientset.InwinstackV1().IPs(ip.Namespace).Update(ip); err != nil {
 		return err
