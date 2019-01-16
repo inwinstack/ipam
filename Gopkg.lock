@@ -109,7 +109,7 @@
   version = "v0.3.6"
 
 [[projects]]
-  digest = "1:7a3ba5d246c7d52822b70394f1da208bb17cfceb10f1f57f5f2434fae5ad8d83"
+  digest = "1:2aa87f052ec999fa0513635dedefc498b1e077c87ad1fb1a67015e1d79a33e51"
   name = "github.com/inwinstack/blended"
   packages = [
     "apis/inwinstack",
@@ -121,8 +121,8 @@
     "client/clientset/versioned/typed/inwinstack/v1/fake",
   ]
   pruneopts = "UT"
-  revision = "01824a59d6b10d8ea96a991a9a96e1dd6ea63266"
-  version = "v0.5.3"
+  revision = "907255654b7d2c4a688cf1eb82b37e5d93acf93c"
+  version = "v0.6.0"
 
 [[projects]]
   branch = "v1.11.0"
@@ -227,14 +227,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e5bf64d17781e7286a6da4803e459c4b01eca1ddc48fe6cd18db31f1b8b8ab2b"
+  digest = "1:0150ad9329793acacd98bcbd88492d9e4731824b5d3fbc73a8a1b45eb21acf6b"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "UT"
-  revision = "2be51725563103c17124a318f1745b66f2347acb"
+  revision = "a457fd036447854c0c02e89ea439481bdcf941a2"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -490,7 +490,7 @@
   name = "k8s.io/kube-openapi"
   packages = ["pkg/util/proto"]
   pruneopts = "UT"
-  revision = "0317810137be915b9cf888946c6e115c1bfac693"
+  revision = "ced9eb3070a5f1c548ef46e8dfe2a97c208d9f03"
 
 [solve-meta]
   analyzer-name = "dep"
