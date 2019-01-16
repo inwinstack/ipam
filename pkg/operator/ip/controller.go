@@ -24,11 +24,9 @@ import (
 	"github.com/golang/glog"
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
 	clientset "github.com/inwinstack/blended/client/clientset/versioned"
-	"github.com/inwinstack/ipam/pkg/constants"
 	"github.com/inwinstack/ipam/pkg/util"
 	"github.com/inwinstack/ipam/pkg/util/slice"
 	opkit "github.com/inwinstack/operator-kit"
-	"k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -95,12 +93,6 @@ func (c *IPController) onUpdate(oldObj, newObj interface{}) {
 			glog.Errorf("Failed to deallocate old IP for %s in %s namespace: %+v.", old.Name, old.Namespace, err)
 		}
 	}
-
-	if ip.Status.Phase == inwinv1.IPActive {
-		if err := c.markNamespaceRefresh(ip); err != nil {
-			glog.Errorf("Failed to update namespace annotations for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
-		}
-	}
 }
 
 func (c *IPController) onDelete(obj interface{}) {
@@ -110,10 +102,6 @@ func (c *IPController) onDelete(obj interface{}) {
 	if ip.Status.Phase == inwinv1.IPActive {
 		if err := c.deallocate(ip); err != nil {
 			glog.Errorf("Failed to deallocate IP for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
-		}
-
-		if err := c.markNamespaceRefresh(ip); err != nil {
-			glog.Errorf("Failed to update namespace annotations for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
 		}
 	}
 }
@@ -191,24 +179,6 @@ func (c *IPController) deallocate(ip *inwinv1.IP) error {
 		pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
 		if err := c.updatePool(pool); err != nil {
 			return c.makeFailedStatus(ip, err)
-		}
-	}
-	return nil
-}
-
-func (c *IPController) markNamespaceRefresh(ip *inwinv1.IP) error {
-	if ip.Spec.MarkNamespaceRefresh {
-		ns, err := c.ctx.Clientset.CoreV1().Namespaces().Get(ip.Namespace, metav1.GetOptions{})
-		if err != nil {
-			// When a namespace has been deleted, we don't do anything
-			return nil
-		}
-
-		if ns.Status.Phase != v1.NamespaceTerminating {
-			ns.Annotations[constants.AnnKeyNamespaceRefresh] = "true"
-			if _, err := c.ctx.Clientset.CoreV1().Namespaces().Update(ns); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
