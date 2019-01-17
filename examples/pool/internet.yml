@@ -8,6 +8,7 @@ spec:
   assignToNamespace: false
   avoidBuggyIPs: true
   avoidGatewayIPs: false
+  ignoreNamespaceAnnotation: true
   ignoreNamespaces:
   - kube-system
   - kube-public
