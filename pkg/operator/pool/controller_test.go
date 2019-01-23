@@ -67,10 +67,10 @@ func TestPoolController(t *testing.T) {
 
 	onAddPool, err := client.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, onAddPool.Status.Phase, inwinv1.PoolActive)
-	assert.Equal(t, onAddPool.Status.AllocatedIPs, []string{})
-	assert.Equal(t, onAddPool.Status.Capacity, 5)
-	assert.Equal(t, onAddPool.Status.Allocatable, 5)
+	assert.Equal(t, inwinv1.PoolActive, onAddPool.Status.Phase)
+	assert.Equal(t, []string{}, onAddPool.Status.AllocatedIPs)
+	assert.Equal(t, 5, onAddPool.Status.Capacity)
+	assert.Equal(t, 5, onAddPool.Status.Allocatable)
 
 	// Test onUpdate
 	onAddPool.Spec.Addresses = append(onAddPool.Spec.Addresses, "172.22.132.250-172.22.132.255")
@@ -78,8 +78,8 @@ func TestPoolController(t *testing.T) {
 
 	onUpdatePool, err := client.InwinstackV1().Pools().Get(onAddPool.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, onUpdatePool.Status.Capacity, 10)
-	assert.Equal(t, onUpdatePool.Status.Allocatable, 10)
+	assert.Equal(t, 10, onUpdatePool.Status.Capacity)
+	assert.Equal(t, 10, onUpdatePool.Status.Allocatable)
 
 	// Test onUpdate failed
 	onUpdatePool.Spec.Addresses = []string{"172.22.132.250-172.22.132.267"}
@@ -87,8 +87,8 @@ func TestPoolController(t *testing.T) {
 
 	onUpdateFailedPool, err := client.InwinstackV1().Pools().Get(onAddPool.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, onUpdateFailedPool.Status.Phase, inwinv1.PoolFailed)
-	assert.Equal(t, onUpdateFailedPool.Status.Capacity, 0)
-	assert.Equal(t, onUpdateFailedPool.Status.Allocatable, 0)
+	assert.Equal(t, inwinv1.PoolFailed, onUpdateFailedPool.Status.Phase)
+	assert.Equal(t, 0, onUpdateFailedPool.Status.Capacity)
+	assert.Equal(t, 0, onUpdateFailedPool.Status.Allocatable)
 	assert.NotNil(t, onUpdateFailedPool.Status.Reason)
 }
