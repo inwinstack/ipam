@@ -118,14 +118,14 @@ func TestIPController(t *testing.T) {
 
 	onAddIP, err := client.InwinstackV1().IPs(namespace).Get(ip.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, onAddIP.Status.Phase, inwinv1.IPActive)
-	assert.Equal(t, onAddIP.Status.Address, "172.22.132.150")
+	assert.Equal(t, inwinv1.IPActive, onAddIP.Status.Phase)
+	assert.Equal(t, "172.22.132.150", onAddIP.Status.Address)
 
 	onAddPool, err := client.InwinstackV1().Pools().Get(test.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, onAddPool.Status.AllocatedIPs, []string{"172.22.132.150"})
-	assert.Equal(t, onAddPool.Status.Capacity, 51)
-	assert.Equal(t, onAddPool.Status.Allocatable, 50)
+	assert.Equal(t, []string{"172.22.132.150"}, onAddPool.Status.AllocatedIPs)
+	assert.Equal(t, 51, onAddPool.Status.Capacity)
+	assert.Equal(t, 50, onAddPool.Status.Allocatable)
 
 	// Test onUpdate
 	controller.onUpdate(createIP, onAddIP)
@@ -139,25 +139,25 @@ func TestIPController(t *testing.T) {
 
 	onUpdateNewPoolIP, err := client.InwinstackV1().IPs(namespace).Get(ip.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, onUpdateNewPoolIP.Status.Phase, inwinv1.IPActive)
-	assert.Equal(t, onUpdateNewPoolIP.Status.Address, "140.145.33.150")
+	assert.Equal(t, inwinv1.IPActive, onUpdateNewPoolIP.Status.Phase)
+	assert.Equal(t, "140.145.33.150", onUpdateNewPoolIP.Status.Address)
 
 	onUpdateNewTestPool, err := client.InwinstackV1().Pools().Get(test.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, onUpdateNewTestPool.Status.AllocatedIPs, []string{})
-	assert.Equal(t, onUpdateNewTestPool.Status.Allocatable, 51)
+	assert.Equal(t, []string{}, onUpdateNewTestPool.Status.AllocatedIPs)
+	assert.Equal(t, 51, onUpdateNewTestPool.Status.Allocatable)
 
 	onUpdateNewInternetPool, err := client.InwinstackV1().Pools().Get(internet.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, onUpdateNewInternetPool.Status.AllocatedIPs, []string{"140.145.33.150"})
-	assert.Equal(t, onUpdateNewInternetPool.Status.Allocatable, 50)
+	assert.Equal(t, []string{"140.145.33.150"}, onUpdateNewInternetPool.Status.AllocatedIPs)
+	assert.Equal(t, 50, onUpdateNewInternetPool.Status.Allocatable)
 
 	// Test onDelete
 	controller.onDelete(onUpdateNewPoolIP)
 
 	onDeletePool, err := client.InwinstackV1().Pools().Get(internet.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, onDeletePool.Status.AllocatedIPs, []string{})
-	assert.Equal(t, onDeletePool.Status.Capacity, 51)
-	assert.Equal(t, onDeletePool.Status.Allocatable, 51)
+	assert.Equal(t, []string{}, onDeletePool.Status.AllocatedIPs)
+	assert.Equal(t, 51, onDeletePool.Status.Capacity)
+	assert.Equal(t, 51, onDeletePool.Status.Allocatable)
 }
