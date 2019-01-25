@@ -25,8 +25,8 @@ import (
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
 	clientset "github.com/inwinstack/blended/client/clientset/versioned"
 	"github.com/inwinstack/ipam/pkg/util"
-	"github.com/inwinstack/ipam/pkg/util/slice"
 	opkit "github.com/inwinstack/operator-kit"
+	slice "github.com/thoas/go-funk"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -144,13 +144,17 @@ func (c *IPController) allocate(ip *inwinv1.IP) error {
 	np := util.NewNetworkParser(pool.Spec.Addresses, pool.Spec.AvoidBuggyIPs, pool.Spec.AvoidGatewayIPs)
 	ips, _ := np.IPs()
 
-	// Filter by pool spec filter IPs
+	filterIPs := pool.Status.AllocatedIPs
 	if pool.Spec.FilterIPs != nil {
-		ips = slice.RemoveItems(ips, pool.Spec.FilterIPs)
+		filterIPs = append([]string{}, append(filterIPs, pool.Spec.FilterIPs...)...)
 	}
 
-	// Filter by allocated IPs
-	ips = slice.RemoveItems(ips, pool.Status.AllocatedIPs)
+	// Filter IPs
+	for _, rem := range filterIPs {
+		ips = slice.FilterString(ips, func(v string) bool {
+			return v != rem
+		})
+	}
 
 	pool.Status.AllocatedIPs = append(pool.Status.AllocatedIPs, ips[0])
 	pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
@@ -175,7 +179,9 @@ func (c *IPController) deallocate(ip *inwinv1.IP) error {
 	}
 
 	if pool.Status.Phase == inwinv1.PoolActive {
-		pool.Status.AllocatedIPs = slice.RemoveItem(pool.Status.AllocatedIPs, ip.Status.Address)
+		pool.Status.AllocatedIPs = slice.FilterString(pool.Status.AllocatedIPs, func(v string) bool {
+			return v != ip.Status.Address
+		})
 		pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
 		if err := c.updatePool(pool); err != nil {
 			return c.makeFailedStatus(ip, err)

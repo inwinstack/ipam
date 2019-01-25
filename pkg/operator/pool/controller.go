@@ -25,8 +25,8 @@ import (
 	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
 	clientset "github.com/inwinstack/blended/client/clientset/versioned"
 	"github.com/inwinstack/ipam/pkg/util"
-	"github.com/inwinstack/ipam/pkg/util/slice"
 	opkit "github.com/inwinstack/operator-kit"
+	slice "github.com/thoas/go-funk"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -88,9 +88,21 @@ func (c *PoolController) onUpdate(oldObj, newObj interface{}) {
 	}
 }
 
+func (c *PoolController) makeStatus(pool *inwinv1.Pool) error {
+	if pool.Status.Capacity == 0 && pool.Status.Phase != inwinv1.PoolActive {
+		if err := c.setStatus(true, pool); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *PoolController) updateStatus(pool *inwinv1.Pool) error {
+	return c.setStatus(false, pool)
+}
+
 func (c *PoolController) setStatus(init bool, pool *inwinv1.Pool) error {
 	pool.Status.Phase = inwinv1.PoolActive
-
 	np := util.NewNetworkParser(pool.Spec.Addresses, pool.Spec.AvoidBuggyIPs, pool.Spec.AvoidGatewayIPs)
 	ips, err := np.IPs()
 	if err != nil {
@@ -99,7 +111,11 @@ func (c *PoolController) setStatus(init bool, pool *inwinv1.Pool) error {
 	}
 
 	if pool.Spec.FilterIPs != nil {
-		ips = slice.RemoveItems(ips, pool.Spec.FilterIPs)
+		for _, rem := range pool.Spec.FilterIPs {
+			ips = slice.FilterString(ips, func(v string) bool {
+				return v != rem
+			})
+		}
 	}
 
 	if init {
@@ -117,17 +133,4 @@ func (c *PoolController) setStatus(init bool, pool *inwinv1.Pool) error {
 		return err
 	}
 	return nil
-}
-
-func (c *PoolController) makeStatus(pool *inwinv1.Pool) error {
-	if pool.Status.Capacity == 0 && pool.Status.Phase != inwinv1.PoolActive {
-		if err := c.setStatus(true, pool); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *PoolController) updateStatus(pool *inwinv1.Pool) error {
-	return c.setStatus(false, pool)
 }
