@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ipam-controller
+  name: ipam
   namespace: kube-system
 spec:
   replicas: 1
@@ -21,7 +21,7 @@ spec:
         key: node-role.kubernetes.io/master
       serviceAccountName: ipam
       containers:
-      - name: ipam-controller
+      - name: ipam
         image: inwinstack/ipam:v0.6.1
         args:
         - --logtostderr=true

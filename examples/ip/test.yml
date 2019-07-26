@@ -1,6 +1,6 @@
 apiVersion: inwinstack.com/v1
 kind: IP
 metadata:
-  name: test-ip
+  name: test-ip-1
 spec:
   poolName: test

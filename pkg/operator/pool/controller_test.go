@@ -1,5 +1,5 @@
 /*
-Copyright © 2018 inwinSTACK.inc
+Copyright © 2018 inwinSTACK Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,41 +17,35 @@ limitations under the License.
 package pool
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
-	fake "github.com/inwinstack/blended/client/clientset/versioned/fake"
-	opkit "github.com/inwinstack/operator-kit"
-
-	extensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
-	corefake "k8s.io/client-go/kubernetes/fake"
-
+	blendedv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
+	blendedfake "github.com/inwinstack/blended/generated/clientset/versioned/fake"
+	blendedinformers "github.com/inwinstack/blended/generated/informers/externalversions"
+	"github.com/inwinstack/ipam/pkg/config"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const timeout = 3 * time.Second
+
 func TestPoolController(t *testing.T) {
-	client := fake.NewSimpleClientset()
-	coreClient := corefake.NewSimpleClientset()
-	extensionsClient := extensionsfake.NewSimpleClientset()
+	ctx, cancel := context.WithCancel(context.Background())
+	cfg := &config.Config{Threads: 2}
+	blendedset := blendedfake.NewSimpleClientset()
+	informer := blendedinformers.NewSharedInformerFactory(blendedset, 0)
 
-	ctx := &opkit.Context{
-		Clientset:             coreClient,
-		APIExtensionClientset: extensionsClient,
-		Interval:              500 * time.Millisecond,
-		Timeout:               60 * time.Second,
-	}
+	controller := NewController(blendedset, informer.Inwinstack().V1().Pools())
+	go informer.Start(ctx.Done())
+	assert.Nil(t, controller.Run(ctx, cfg.Threads))
 
-	controller := NewController(ctx, client)
-	assert.NotNil(t, controller)
-
-	// Test onAdd
-	pool := &inwinv1.Pool{
+	pool := &blendedv1.Pool{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-pool",
 		},
-		Spec: inwinv1.PoolSpec{
+		Spec: blendedv1.PoolSpec{
 			Addresses:         []string{"172.22.132.0-172.22.132.5"},
 			AssignToNamespace: false,
 			AvoidBuggyIPs:     true,
@@ -60,35 +54,73 @@ func TestPoolController(t *testing.T) {
 		},
 	}
 
-	createPool, err := client.InwinstackV1().Pools().Create(pool)
+	// Create the pool
+	_, err := blendedset.InwinstackV1().Pools().Create(pool)
 	assert.Nil(t, err)
 
-	controller.onAdd(createPool)
+	failed := true
+	for start := time.Now(); time.Since(start) < timeout; {
+		p, err := blendedset.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
+		assert.Nil(t, err)
 
-	onAddPool, err := client.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
+		if p.Status.Phase == blendedv1.PoolActive {
+			assert.Equal(t, []string{}, p.Status.AllocatedIPs)
+			assert.Equal(t, 5, p.Status.Capacity)
+			assert.Equal(t, 5, p.Status.Allocatable)
+			failed = false
+			break
+		}
+	}
+	assert.Equal(t, false, failed, "The pool object failed to make status.")
+
+	// Success to update the pool
+	gpool, err := blendedset.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, inwinv1.PoolActive, onAddPool.Status.Phase)
-	assert.Equal(t, []string{}, onAddPool.Status.AllocatedIPs)
-	assert.Equal(t, 5, onAddPool.Status.Capacity)
-	assert.Equal(t, 5, onAddPool.Status.Allocatable)
 
-	// Test onUpdate
-	onAddPool.Spec.Addresses = append(onAddPool.Spec.Addresses, "172.22.132.250-172.22.132.255")
-	controller.onUpdate(createPool, onAddPool)
-
-	onUpdatePool, err := client.InwinstackV1().Pools().Get(onAddPool.Name, metav1.GetOptions{})
+	gpool.Spec.Addresses = append(gpool.Spec.Addresses, "172.22.132.250-172.22.132.255")
+	_, err = blendedset.InwinstackV1().Pools().Update(gpool)
 	assert.Nil(t, err)
-	assert.Equal(t, 10, onUpdatePool.Status.Capacity)
-	assert.Equal(t, 10, onUpdatePool.Status.Allocatable)
 
-	// Test onUpdate failed
-	onUpdatePool.Spec.Addresses = []string{"172.22.132.250-172.22.132.267"}
-	controller.onUpdate(onAddPool, onUpdatePool)
+	failed = true
+	for start := time.Now(); time.Since(start) < timeout; {
+		p, err := blendedset.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
+		assert.Nil(t, err)
 
-	onUpdateFailedPool, err := client.InwinstackV1().Pools().Get(onAddPool.Name, metav1.GetOptions{})
+		if p.Status.Capacity == 10 {
+			assert.Equal(t, 10, p.Status.Allocatable)
+			failed = false
+			break
+		}
+	}
+	assert.Equal(t, false, failed, "The service object failed to sync status.")
+
+	// Failed to update the pool
+	gpool, err = blendedset.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, inwinv1.PoolFailed, onUpdateFailedPool.Status.Phase)
-	assert.Equal(t, 0, onUpdateFailedPool.Status.Capacity)
-	assert.Equal(t, 0, onUpdateFailedPool.Status.Allocatable)
-	assert.NotNil(t, onUpdateFailedPool.Status.Reason)
+	gpool.Spec.Addresses = []string{"172.22.132.250-172.22.132.267"}
+
+	_, err = blendedset.InwinstackV1().Pools().Update(gpool)
+	assert.Nil(t, err)
+
+	failed = true
+	for start := time.Now(); time.Since(start) < timeout; {
+		p, err := blendedset.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
+		assert.Nil(t, err)
+
+		if p.Status.Phase == blendedv1.PoolFailed {
+			assert.NotNil(t, p.Status.Reason)
+			failed = false
+			break
+		}
+	}
+	assert.Equal(t, false, failed, "The service object failed to get error status.")
+
+	// Delete the pool
+	assert.Nil(t, blendedset.InwinstackV1().Pools().Delete(pool.Name, nil))
+
+	_, err = blendedset.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
+	assert.NotNil(t, err)
+
+	cancel()
+	controller.Stop()
 }

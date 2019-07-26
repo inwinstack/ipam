@@ -9,7 +9,6 @@ Clone repo into your go path under `$GOPATH/src`:
 ```sh
 $ git clone https://github.com/inwinstack/ipam.git $GOPATH/src/github.com/inwinstack/ipam
 $ cd $GOPATH/src/github.com/inwinstack/ipam
-$ make dep
 $ make
 ```
 

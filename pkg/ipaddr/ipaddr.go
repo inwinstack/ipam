@@ -1,5 +1,5 @@
 /*
-Copyright © 2018 inwinSTACK.inc
+Copyright © 2018 inwinSTACK Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,31 +14,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package ipaddr
 
 import (
 	"fmt"
 	"net"
 	"strings"
 
+	"github.com/thoas/go-funk"
+
 	"github.com/mikioh/ipaddr"
 )
 
-type NetworkParser struct {
+type Parser struct {
 	Addresses    []string
 	AvoidBuggy   bool
 	AvoidGateway bool
 }
 
-func NewNetworkParser(addrs []string, buggy, gateway bool) *NetworkParser {
-	return &NetworkParser{
+func NewParser(addrs []string, buggy, gateway bool) *Parser {
+	return &Parser{
 		Addresses:    addrs,
 		AvoidBuggy:   buggy,
 		AvoidGateway: gateway,
 	}
 }
 
-func (p *NetworkParser) getIPNets(cidr string) ([]*net.IPNet, error) {
+func (p *Parser) getIPNets(cidr string) ([]*net.IPNet, error) {
 	if !strings.Contains(cidr, "-") {
 		_, n, err := net.ParseCIDR(cidr)
 		if err != nil {
@@ -73,7 +75,7 @@ func (p *NetworkParser) getIPNets(cidr string) ([]*net.IPNet, error) {
 	return ret, nil
 }
 
-func (p *NetworkParser) isGatewayIP(v string) bool {
+func (p *Parser) isGatewayIP(v string) bool {
 	gatewayIPs := []string{"1", "254"}
 	fs := strings.SplitN(v, ".", 4)
 	for _, ip := range gatewayIPs {
@@ -84,7 +86,7 @@ func (p *NetworkParser) isGatewayIP(v string) bool {
 	return false
 }
 
-func (p *NetworkParser) isBuggyIP(v string) bool {
+func (p *Parser) isBuggyIP(v string) bool {
 	buggyIPs := []string{"0", "255"}
 	fs := strings.SplitN(v, ".", 4)
 	for _, ip := range buggyIPs {
@@ -104,7 +106,7 @@ func inc(ip net.IP) {
 	}
 }
 
-func (p *NetworkParser) getIPs(ipnet *net.IPNet) []string {
+func (p *Parser) getIPs(ipnet *net.IPNet) []string {
 	var ips []string
 	for ip := ipnet.IP.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
 		if p.AvoidBuggy && p.isBuggyIP(ip.String()) {
@@ -119,16 +121,32 @@ func (p *NetworkParser) getIPs(ipnet *net.IPNet) []string {
 	return ips
 }
 
-func (p *NetworkParser) IPs() ([]string, error) {
+func (p *Parser) IPs() ([]string, error) {
 	var ips []string
 	for _, address := range p.Addresses {
 		nets, err := p.getIPNets(address)
 		if err != nil {
-			return nil, fmt.Errorf("Invalid parse CIDR from %+v", address)
+			return nil, fmt.Errorf("Invalid parse CIDR from %+v address", address)
 		}
 
 		for _, net := range nets {
 			ips = append([]string{}, append(ips, p.getIPs(net)...)...)
+		}
+	}
+	return ips, nil
+}
+
+func (p *Parser) FilterIPs(filters ...[]string) ([]string, error) {
+	ips, err := p.IPs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range filters {
+		if len(f) > 0 {
+			for _, addr := range f {
+				ips = funk.FilterString(ips, func(v string) bool { return v != addr })
+			}
 		}
 	}
 	return ips, nil

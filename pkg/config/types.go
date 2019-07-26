@@ -1,5 +1,5 @@
 /*
-Copyright © 2018 inwinSTACK.inc
+Copyright © 2018 inwinSTACK Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,25 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package k8sutil
+package config
 
-import (
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-)
-
-func GetRestConfig(kubeconfig string) (*rest.Config, error) {
-	if kubeconfig != "" {
-		cfg, err := clientcmd.BuildConfigFromFlags("master", kubeconfig)
-		if err != nil {
-			return nil, err
-		}
-		return cfg, nil
-	}
-
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-	return cfg, nil
+// Config contains the operator config
+type Config struct {
+	Threads int
+	SyncSec int
 }

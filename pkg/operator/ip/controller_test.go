@@ -1,5 +1,5 @@
 /*
-Copyright © 2018 inwinSTACK.inc
+Copyright © 2018 inwinSTACK Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,147 +17,92 @@ limitations under the License.
 package ip
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
-	fake "github.com/inwinstack/blended/client/clientset/versioned/fake"
-	opkit "github.com/inwinstack/operator-kit"
-
-	"k8s.io/api/core/v1"
-	extensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
-	corefake "k8s.io/client-go/kubernetes/fake"
-
+	blendedv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
+	blendedfake "github.com/inwinstack/blended/generated/clientset/versioned/fake"
+	blendedinformers "github.com/inwinstack/blended/generated/informers/externalversions"
+	"github.com/inwinstack/ipam/pkg/config"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const namespace = "test"
+const timeout = 3 * time.Second
 
-func TestIPController(t *testing.T) {
-	client := fake.NewSimpleClientset()
-	coreClient := corefake.NewSimpleClientset()
-	extensionsClient := extensionsfake.NewSimpleClientset()
+func TestPoolController(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cfg := &config.Config{Threads: 2}
+	blendedset := blendedfake.NewSimpleClientset()
+	informer := blendedinformers.NewSharedInformerFactory(blendedset, 0)
 
-	test := &inwinv1.Pool{
+	controller := NewController(blendedset, informer.Inwinstack().V1().IPs())
+	go informer.Start(ctx.Done())
+	assert.Nil(t, controller.Run(ctx, cfg.Threads))
+
+	pool := &blendedv1.Pool{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
-		Spec: inwinv1.PoolSpec{
-			Addresses:         []string{"172.22.132.150-172.22.132.200"},
+		Spec: blendedv1.PoolSpec{
+			Addresses:         []string{"172.22.132.0-172.22.132.5"},
 			AssignToNamespace: false,
-			IgnoreNamespaces:  []string{"kube-system", "kube-public", "default"},
+			AvoidBuggyIPs:     true,
+			AvoidGatewayIPs:   false,
 		},
-		Status: inwinv1.PoolStatus{
-			Phase:          inwinv1.PoolActive,
+		Status: blendedv1.PoolStatus{
+			Phase:          blendedv1.PoolActive,
 			AllocatedIPs:   []string{},
-			Capacity:       51,
-			Allocatable:    51,
+			Capacity:       5,
+			Allocatable:    5,
 			LastUpdateTime: metav1.NewTime(time.Now()),
 		},
 	}
+	_, err := blendedset.InwinstackV1().Pools().Create(pool)
+	assert.Nil(t, err)
 
-	_, testerr := client.InwinstackV1().Pools().Create(test)
-	assert.Nil(t, testerr)
-
-	internet := &inwinv1.Pool{
+	ip := &blendedv1.IP{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "internet",
+			Name:      "test-ip-1",
+			Namespace: "default",
 		},
-		Spec: inwinv1.PoolSpec{
-			Addresses:         []string{"140.145.33.150-140.145.33.200"},
-			AssignToNamespace: false,
-			IgnoreNamespaces:  []string{"kube-system", "kube-public", "default"},
-		},
-		Status: inwinv1.PoolStatus{
-			Phase:          inwinv1.PoolActive,
-			AllocatedIPs:   []string{},
-			Capacity:       51,
-			Allocatable:    51,
-			LastUpdateTime: metav1.NewTime(time.Now()),
+		Spec: blendedv1.IPSpec{
+			PoolName: pool.Name,
 		},
 	}
+	_, err = blendedset.InwinstackV1().IPs(ip.Namespace).Create(ip)
+	assert.Nil(t, err)
 
-	_, interneterr := client.InwinstackV1().Pools().Create(internet)
-	assert.Nil(t, interneterr)
+	failed := true
+	for start := time.Now(); time.Since(start) < timeout; {
+		gip, err := blendedset.InwinstackV1().IPs(ip.Namespace).Get(ip.Name, metav1.GetOptions{})
+		assert.Nil(t, err)
 
-	ns := &v1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        namespace,
-			Annotations: map[string]string{},
-		},
+		if gip.Status.Phase == blendedv1.IPActive {
+			assert.Equal(t, "172.22.132.1", gip.Status.Address)
+			gpool, err := blendedset.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
+			assert.Nil(t, err)
+			assert.Equal(t, []string{"172.22.132.1"}, gpool.Status.AllocatedIPs)
+			assert.Equal(t, 4, gpool.Status.Allocatable)
+			assert.Equal(t, 5, gpool.Status.Capacity)
+			failed = false
+			break
+		}
 	}
+	assert.Equal(t, false, failed, "The service object failed to allocate IP.")
 
-	_, nserr := coreClient.CoreV1().Namespaces().Create(ns)
-	assert.Nil(t, nserr)
-
-	ctx := &opkit.Context{
-		Clientset:             coreClient,
-		APIExtensionClientset: extensionsClient,
-		Interval:              500 * time.Millisecond,
-		Timeout:               60 * time.Second,
-	}
-
-	controller := NewController(ctx, client)
-	assert.NotNil(t, controller)
-
-	// Test onAdd
-	ip := &inwinv1.IP{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ip",
-			Namespace: namespace,
-		},
-		Spec: inwinv1.IPSpec{
-			PoolName: test.Name,
-		},
-	}
-	createIP, err := client.InwinstackV1().IPs(namespace).Create(ip)
+	// Test to deallocate IP
+	gip, err := blendedset.InwinstackV1().IPs(ip.Namespace).Get(ip.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
+	assert.Nil(t, controller.deallocate(gip))
 
-	controller.onAdd(createIP)
-
-	onAddIP, err := client.InwinstackV1().IPs(namespace).Get(ip.Name, metav1.GetOptions{})
+	gpool, err := blendedset.InwinstackV1().Pools().Get(pool.Name, metav1.GetOptions{})
 	assert.Nil(t, err)
-	assert.Equal(t, inwinv1.IPActive, onAddIP.Status.Phase)
-	assert.Equal(t, "172.22.132.150", onAddIP.Status.Address)
+	assert.Equal(t, []string{}, gpool.Status.AllocatedIPs)
+	assert.Equal(t, 5, gpool.Status.Allocatable)
+	assert.Equal(t, 5, gpool.Status.Capacity)
 
-	onAddPool, err := client.InwinstackV1().Pools().Get(test.Name, metav1.GetOptions{})
-	assert.Nil(t, err)
-	assert.Equal(t, []string{"172.22.132.150"}, onAddPool.Status.AllocatedIPs)
-	assert.Equal(t, 51, onAddPool.Status.Capacity)
-	assert.Equal(t, 50, onAddPool.Status.Allocatable)
-
-	// Test onUpdate
-	controller.onUpdate(createIP, onAddIP)
-
-	// Test onUpdate for change pool
-	onUpdateIP, err := client.InwinstackV1().IPs(namespace).Get(ip.Name, metav1.GetOptions{})
-	assert.Nil(t, err)
-
-	onUpdateIP.Spec.PoolName = internet.Name
-	controller.onUpdate(onAddIP, onUpdateIP)
-
-	onUpdateNewPoolIP, err := client.InwinstackV1().IPs(namespace).Get(ip.Name, metav1.GetOptions{})
-	assert.Nil(t, err)
-	assert.Equal(t, inwinv1.IPActive, onUpdateNewPoolIP.Status.Phase)
-	assert.Equal(t, "140.145.33.150", onUpdateNewPoolIP.Status.Address)
-
-	onUpdateNewTestPool, err := client.InwinstackV1().Pools().Get(test.Name, metav1.GetOptions{})
-	assert.Nil(t, err)
-	assert.Equal(t, []string{}, onUpdateNewTestPool.Status.AllocatedIPs)
-	assert.Equal(t, 51, onUpdateNewTestPool.Status.Allocatable)
-
-	onUpdateNewInternetPool, err := client.InwinstackV1().Pools().Get(internet.Name, metav1.GetOptions{})
-	assert.Nil(t, err)
-	assert.Equal(t, []string{"140.145.33.150"}, onUpdateNewInternetPool.Status.AllocatedIPs)
-	assert.Equal(t, 50, onUpdateNewInternetPool.Status.Allocatable)
-
-	// Test onDelete
-	controller.onDelete(onUpdateNewPoolIP)
-
-	onDeletePool, err := client.InwinstackV1().Pools().Get(internet.Name, metav1.GetOptions{})
-	assert.Nil(t, err)
-	assert.Equal(t, []string{}, onDeletePool.Status.AllocatedIPs)
-	assert.Equal(t, 51, onDeletePool.Status.Capacity)
-	assert.Equal(t, 51, onDeletePool.Status.Allocatable)
+	cancel()
+	controller.Stop()
 }
