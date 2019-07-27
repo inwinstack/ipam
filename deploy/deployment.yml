@@ -22,7 +22,7 @@ spec:
       serviceAccountName: ipam
       containers:
       - name: ipam
-        image: inwinstack/ipam:v0.6.1
+        image: inwinstack/ipam:v0.7.0
         args:
         - --logtostderr=true
         - --v=2
