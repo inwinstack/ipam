@@ -1,5 +1,5 @@
 /*
-Copyright © 2018 inwinSTACK.inc
+Copyright © 2018 inwinSTACK Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,28 +13,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-package util
+package version
 
 import (
-	"log"
-	"time"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-type RetriableError struct {
-	Err error
-}
+func TestGetVersion(t *testing.T) {
+	assert.Equal(t, "v0.0.0-unset", GetVersion())
 
-func (r RetriableError) Error() string { return r.Err.Error() }
-
-func Retry(callback func() error, d time.Duration, attempts int) (err error) {
-	for i := 0; i < attempts; i++ {
-		err = callback()
-		if err == nil {
-			return nil
-		}
-		log.Printf("Error: %s, Retrying in %s. %d Retries remaining.", err, d, attempts-i)
-		time.Sleep(d)
-	}
-	return err
+	version = "v0.1.0"
+	assert.Equal(t, "v0.1.0", GetVersion())
 }

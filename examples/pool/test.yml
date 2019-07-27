@@ -4,9 +4,11 @@ metadata:
   name: test
 spec:
   addresses: 
-  - 172.22.132.0-172.22.132.10
+  - 172.22.132.0-172.22.132.15
   - 172.22.132.250-172.22.132.255
   assignToNamespace: false
+  filterIPs:
+  - 172.22.132.10
   avoidBuggyIPs: true
   avoidGatewayIPs: true
   ignoreNamespaceAnnotation: true

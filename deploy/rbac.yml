@@ -10,12 +10,6 @@ metadata:
   name: ipam-role
 rules:
 - apiGroups:
-  - ""
-  resources:
-  - namespaces
-  verbs:
-  - "*"
-- apiGroups:
   - apiextensions.k8s.io
   resources:
   - customresourcedefinitions
@@ -29,7 +23,8 @@ rules:
 - apiGroups:
   - inwinstack.com
   resources:
-  - "*"
+  - "ips"
+  - "pools"
   verbs:
   - "*"
 ---

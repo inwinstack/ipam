@@ -12,6 +12,5 @@ vendor/
 out/
 tmp/
 
-pkg/client/listers/
-pkg/client/informers/
+.vscode/
 

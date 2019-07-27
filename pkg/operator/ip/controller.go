@@ -1,5 +1,5 @@
 /*
-Copyright © 2018 inwinSTACK.inc
+Copyright © 2018 inwinSTACK Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,175 +17,258 @@ limitations under the License.
 package ip
 
 import (
+	"context"
 	"fmt"
-	"reflect"
 	"time"
 
+	"github.com/thoas/go-funk"
+
 	"github.com/golang/glog"
-	inwinv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
-	clientset "github.com/inwinstack/blended/client/clientset/versioned"
-	"github.com/inwinstack/ipam/pkg/util"
-	opkit "github.com/inwinstack/operator-kit"
-	slice "github.com/thoas/go-funk"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	blendedv1 "github.com/inwinstack/blended/apis/inwinstack/v1"
+	"github.com/inwinstack/blended/constants"
+	blended "github.com/inwinstack/blended/generated/clientset/versioned"
+	informerv1 "github.com/inwinstack/blended/generated/informers/externalversions/inwinstack/v1"
+	listerv1 "github.com/inwinstack/blended/generated/listers/inwinstack/v1"
+	"github.com/inwinstack/blended/k8sutil"
+	"github.com/inwinstack/ipam/pkg/ipaddr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 )
 
-const (
-	customResourceName       = "ip"
-	customResourceNamePlural = "ips"
-)
-
-var Resource = opkit.CustomResource{
-	Name:    customResourceName,
-	Plural:  customResourceNamePlural,
-	Group:   inwinv1.CustomResourceGroup,
-	Version: inwinv1.Version,
-	Scope:   apiextensionsv1beta1.NamespaceScoped,
-	Kind:    reflect.TypeOf(inwinv1.IP{}).Name(),
+// Controller represents the controller of ip
+type Controller struct {
+	blendedset blended.Interface
+	lister     listerv1.IPLister
+	synced     cache.InformerSynced
+	queue      workqueue.RateLimitingInterface
 }
 
-type IPController struct {
-	ctx       *opkit.Context
-	clientset clientset.Interface
+// NewController creates an instance of the ip controller
+func NewController(blendedset blended.Interface, informer informerv1.IPInformer) *Controller {
+	controller := &Controller{
+		blendedset: blendedset,
+		lister:     informer.Lister(),
+		synced:     informer.Informer().HasSynced,
+		queue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "IPs"),
+	}
+	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.enqueue,
+		UpdateFunc: func(old, new interface{}) {
+			oo := old.(*blendedv1.IP)
+			no := new.(*blendedv1.IP)
+			k8sutil.MakeNeedToUpdate(&no.ObjectMeta, oo.Spec, no.Spec)
+			if k8sutil.IsNeedToUpdate(no.ObjectMeta) {
+				// Don't change the IP pool name
+				no.Spec.PoolName = oo.Spec.PoolName
+			}
+			controller.enqueue(no)
+		},
+	})
+	return controller
 }
 
-func NewController(ctx *opkit.Context, clientset clientset.Interface) *IPController {
-	return &IPController{ctx: ctx, clientset: clientset}
-}
-
-func (c *IPController) StartWatch(namespace string, stopCh chan struct{}) error {
-	resourceHandlerFuncs := cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.onAdd,
-		UpdateFunc: c.onUpdate,
-		DeleteFunc: c.onDelete,
+// Run serves the ip controller
+func (c *Controller) Run(ctx context.Context, threadiness int) error {
+	glog.Info("Starting the ip controller")
+	glog.Info("Waiting for the ip informer caches to sync")
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.synced); !ok {
+		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
-	glog.Infof("Start watching IP resources.")
-	watcher := opkit.NewWatcher(Resource, namespace, resourceHandlerFuncs, c.clientset.InwinstackV1().RESTClient())
-	go watcher.Watch(&inwinv1.IP{}, stopCh)
-	return nil
-}
-
-func (c *IPController) onAdd(obj interface{}) {
-	ip := obj.(*inwinv1.IP).DeepCopy()
-	glog.V(2).Infof("Received add on IP %s in %s namespace.", ip.Name, ip.Namespace)
-
-	if ip.Status.Phase != inwinv1.IPActive {
-		if err := c.allocate(ip); err != nil {
-			glog.Errorf("Failed to allocate IP for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
-		}
-	}
-}
-
-func (c *IPController) onUpdate(oldObj, newObj interface{}) {
-	old := oldObj.(*inwinv1.IP).DeepCopy()
-	ip := newObj.(*inwinv1.IP).DeepCopy()
-	glog.V(2).Infof("Received update on IP %s in namespace %s.", ip.Name, ip.Namespace)
-
-	if old.Spec.PoolName != ip.Spec.PoolName {
-		if err := c.allocate(ip); err != nil {
-			glog.Errorf("Failed to allocate new IP for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
-		}
-
-		if err := c.deallocate(old); err != nil {
-			glog.Errorf("Failed to deallocate old IP for %s in %s namespace: %+v.", old.Name, old.Namespace, err)
-		}
-	}
-}
-
-func (c *IPController) onDelete(obj interface{}) {
-	ip := obj.(*inwinv1.IP).DeepCopy()
-	glog.V(2).Infof("Received delete on IP %s in %s namespace.", ip.Name, ip.Namespace)
-
-	if ip.Status.Phase == inwinv1.IPActive {
-		if err := c.deallocate(ip); err != nil {
-			glog.Errorf("Failed to deallocate IP for %s in %s namespace: %+v.", ip.Name, ip.Namespace, err)
-		}
-	}
-}
-
-func (c *IPController) makeFailedStatus(ip *inwinv1.IP, e error) error {
-	ip.Status.Phase = inwinv1.IPFailed
-	ip.Status.Reason = fmt.Sprintf("%+v.", e)
-	ip.Status.Address = ""
-	ip.Status.LastUpdateTime = metav1.NewTime(time.Now())
-	if _, err := c.clientset.InwinstackV1().IPs(ip.Namespace).Update(ip); err != nil {
-		return err
+	for i := 0; i < threadiness; i++ {
+		go wait.Until(c.runWorker, time.Second, ctx.Done())
 	}
 	return nil
 }
 
-func (c *IPController) updatePool(pool *inwinv1.Pool) error {
-	pool.Status.LastUpdateTime = metav1.NewTime(time.Now())
-	if _, err := c.clientset.InwinstackV1().Pools().Update(pool); err != nil {
-		return err
-	}
-	return nil
+// Stop stops the ip controller
+func (c *Controller) Stop() {
+	glog.Info("Stopping the ip controller")
+	c.queue.ShutDown()
 }
 
-func (c *IPController) allocate(ip *inwinv1.IP) error {
-	pool, err := c.clientset.InwinstackV1().Pools().Get(ip.Spec.PoolName, metav1.GetOptions{})
+func (c *Controller) runWorker() {
+	defer utilruntime.HandleCrash()
+	for c.processNextWorkItem() {
+	}
+}
+
+func (c *Controller) processNextWorkItem() bool {
+	obj, shutdown := c.queue.Get()
+	if shutdown {
+		return false
+	}
+
+	err := func(obj interface{}) error {
+		defer c.queue.Done(obj)
+		key, ok := obj.(string)
+		if !ok {
+			c.queue.Forget(obj)
+			utilruntime.HandleError(fmt.Errorf("IP expected string in workqueue but got %#v", obj))
+			return nil
+		}
+
+		if err := c.reconcile(key); err != nil {
+			c.queue.AddRateLimited(key)
+			return fmt.Errorf("IP error syncing '%s': %s, requeuing", key, err.Error())
+		}
+
+		c.queue.Forget(obj)
+		glog.V(2).Infof("IP successfully synced '%s'", key)
+		return nil
+	}(obj)
+
 	if err != nil {
-		return c.makeFailedStatus(ip, err)
+		utilruntime.HandleError(err)
+		return true
+	}
+	return true
+}
+
+func (c *Controller) enqueue(obj interface{}) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	c.queue.Add(key)
+}
+
+func (c *Controller) reconcile(key string) error {
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+		return err
 	}
 
-	if pool.Status.Phase == inwinv1.PoolFailed {
-		err := fmt.Errorf("Unable to allocate IP from failed pool")
-		return c.makeFailedStatus(ip, err)
+	ip, err := c.lister.IPs(namespace).Get(name)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			utilruntime.HandleError(fmt.Errorf("ip '%s' in work queue no longer exists", key))
+			return err
+		}
+		return err
 	}
 
-	if pool.Status.Allocatable == 0 {
-		err := fmt.Errorf("The pool \"%s\" has been exhausted", pool.Name)
-		return c.makeFailedStatus(ip, err)
+	if !ip.ObjectMeta.DeletionTimestamp.IsZero() {
+		return c.deallocate(ip)
 	}
 
-	np := util.NewNetworkParser(pool.Spec.Addresses, pool.Spec.AvoidBuggyIPs, pool.Spec.AvoidGatewayIPs)
-	ips, _ := np.IPs()
-
-	filterIPs := pool.Status.AllocatedIPs
-	if pool.Spec.FilterIPs != nil {
-		filterIPs = append([]string{}, append(filterIPs, pool.Spec.FilterIPs...)...)
+	if err := c.checkAndUdateFinalizer(ip); err != nil {
+		return err
 	}
 
-	// Filter IPs
-	for _, rem := range filterIPs {
-		ips = slice.FilterString(ips, func(v string) bool {
-			return v != rem
-		})
+	need := k8sutil.IsNeedToUpdate(ip.ObjectMeta)
+	if ip.Status.Phase != blendedv1.IPActive || need {
+		if err := c.allocate(ip); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Controller) checkAndUdateFinalizer(ip *blendedv1.IP) error {
+	ipCopy := ip.DeepCopy()
+	ok := funk.ContainsString(ipCopy.Finalizers, constants.CustomFinalizer)
+	if ipCopy.Status.Phase == blendedv1.IPActive && !ok {
+		k8sutil.AddFinalizer(&ipCopy.ObjectMeta, constants.CustomFinalizer)
+		if _, err := c.blendedset.InwinstackV1().IPs(ipCopy.Namespace).Update(ipCopy); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Controller) updatePool(pool *blendedv1.Pool) error {
+	pool.Status.LastUpdateTime = metav1.Now()
+	if _, err := c.blendedset.InwinstackV1().Pools().Update(pool); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) makeFailedStatus(ip *blendedv1.IP, e error) error {
+	ip.Status.Address = ""
+	ip.Status.Phase = blendedv1.IPFailed
+	ip.Status.Reason = fmt.Sprintf("%+v.", e)
+	ip.Status.LastUpdateTime = metav1.Now()
+	delete(ip.Annotations, constants.NeedUpdateKey)
+	if _, err := c.blendedset.InwinstackV1().IPs(ip.Namespace).Update(ip); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) allocate(ip *blendedv1.IP) error {
+	ipCopy := ip.DeepCopy()
+	pool, err := c.blendedset.InwinstackV1().Pools().Get(ipCopy.Spec.PoolName, metav1.GetOptions{})
+	if err != nil {
+		return err
 	}
 
-	pool.Status.AllocatedIPs = append(pool.Status.AllocatedIPs, ips[0])
+	switch pool.Status.Phase {
+	case blendedv1.PoolActive:
+		if ipCopy.Status.Address == "" {
+			if pool.Status.Allocatable == 0 {
+				return c.makeFailedStatus(ipCopy, fmt.Errorf("The \"%s\" pool has been exhausted", pool.Name))
+			}
+
+			parser := ipaddr.NewParser(pool.Spec.Addresses, pool.Spec.AvoidBuggyIPs, pool.Spec.AvoidGatewayIPs)
+			ips, err := parser.FilterIPs(pool.Status.AllocatedIPs, pool.Spec.FilterIPs)
+			if err != nil {
+				return c.makeFailedStatus(ipCopy, err)
+			}
+
+			pool.Status.AllocatedIPs = append(pool.Status.AllocatedIPs, ips[0])
+			pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
+			if err := c.updatePool(pool); err != nil {
+				// If the pool failed to update, this res will requeue
+				return err
+			}
+
+			ipCopy.Status.Reason = ""
+			ipCopy.Status.Address = ips[0]
+			ipCopy.Status.Phase = blendedv1.IPActive
+			k8sutil.AddFinalizer(&ipCopy.ObjectMeta, constants.CustomFinalizer)
+		}
+	case blendedv1.PoolTerminating:
+		ipCopy.Status.Reason = fmt.Sprintf("The \"%s\" pool has been terminated.", pool.Name)
+		ipCopy.Status.Phase = blendedv1.IPFailed
+	}
+
+	delete(ipCopy.Annotations, constants.NeedUpdateKey)
+	ipCopy.Status.LastUpdateTime = metav1.Now()
+	if _, err := c.blendedset.InwinstackV1().IPs(ipCopy.Namespace).Update(ipCopy); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) deallocate(ip *blendedv1.IP) error {
+	ipCopy := ip.DeepCopy()
+	pool, err := c.blendedset.InwinstackV1().Pools().Get(ipCopy.Spec.PoolName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	pool.Status.AllocatedIPs = funk.FilterString(pool.Status.AllocatedIPs, func(v string) bool {
+		return v != ip.Status.Address
+	})
 	pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
 	if err := c.updatePool(pool); err != nil {
-		return c.makeFailedStatus(ip, err)
-	}
-
-	ip.Status.Address = ips[0]
-	ip.Status.Phase = inwinv1.IPActive
-	ip.Status.Reason = ""
-	ip.Status.LastUpdateTime = metav1.NewTime(time.Now())
-	if _, err := c.clientset.InwinstackV1().IPs(ip.Namespace).Update(ip); err != nil {
 		return err
 	}
-	return nil
-}
 
-func (c *IPController) deallocate(ip *inwinv1.IP) error {
-	pool, err := c.clientset.InwinstackV1().Pools().Get(ip.Spec.PoolName, metav1.GetOptions{})
-	if err != nil {
-		return c.makeFailedStatus(ip, err)
-	}
-
-	if pool.Status.Phase == inwinv1.PoolActive {
-		pool.Status.AllocatedIPs = slice.FilterString(pool.Status.AllocatedIPs, func(v string) bool {
-			return v != ip.Status.Address
-		})
-		pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
-		if err := c.updatePool(pool); err != nil {
-			return c.makeFailedStatus(ip, err)
-		}
+	ipCopy.Status.LastUpdateTime = metav1.Now()
+	ipCopy.Status.Phase = blendedv1.IPTerminating
+	delete(ip.Annotations, constants.NeedUpdateKey)
+	k8sutil.RemoveFinalizer(&ipCopy.ObjectMeta, constants.CustomFinalizer)
+	if _, err := c.blendedset.InwinstackV1().IPs(ipCopy.Namespace).Update(ipCopy); err != nil {
+		return err
 	}
 	return nil
 }

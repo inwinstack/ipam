@@ -1,5 +1,5 @@
 /*
-Copyright © 2018 inwinSTACK.inc
+Copyright © 2018 inwinSTACK Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,130 +17,55 @@ limitations under the License.
 package operator
 
 import (
+	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
-	"github.com/golang/glog"
-	clientset "github.com/inwinstack/blended/client/clientset/versioned"
-	"github.com/inwinstack/ipam/pkg/k8sutil"
+	blended "github.com/inwinstack/blended/generated/clientset/versioned"
+	blendedinformers "github.com/inwinstack/blended/generated/informers/externalversions"
+	"github.com/inwinstack/ipam/pkg/config"
 	"github.com/inwinstack/ipam/pkg/operator/ip"
 	"github.com/inwinstack/ipam/pkg/operator/pool"
-	opkit "github.com/inwinstack/operator-kit"
-	apiextensionsclients "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
+const defaultSyncTime = time.Second * 30
+
+// Operator represents an operator context
 type Operator struct {
-	kubeconfig string
-
-	ctx       *opkit.Context
-	pool      *pool.PoolController
-	ip        *ip.IPController
-	resources []opkit.CustomResource
+	clientset blended.Interface
+	informer  blendedinformers.SharedInformerFactory
+	cfg       *config.Config
+	pool      *pool.Controller
+	ip        *ip.Controller
 }
 
-const (
-	initRetryDelay = 10 * time.Second
-	interval       = 500 * time.Millisecond
-	timeout        = 60 * time.Second
-)
-
-func NewMainOperator(kubeconfig string) *Operator {
-	return &Operator{
-		resources:  []opkit.CustomResource{pool.Resource, ip.Resource},
-		kubeconfig: kubeconfig,
+// New creates an instance of the operator
+func New(cfg *config.Config, clientset blended.Interface) *Operator {
+	t := defaultSyncTime
+	if cfg.SyncSec > 30 {
+		t = time.Second * time.Duration(cfg.SyncSec)
 	}
+	o := &Operator{cfg: cfg, clientset: clientset}
+	o.informer = blendedinformers.NewSharedInformerFactory(clientset, t)
+	o.pool = pool.NewController(clientset, o.informer.Inwinstack().V1().Pools())
+	o.ip = ip.NewController(clientset, o.informer.Inwinstack().V1().IPs())
+	return o
 }
 
-func (o *Operator) Initialize() error {
-	glog.V(2).Info("Initialize the operator resources.")
-
-	ctx, blendedClient, err := o.initContextAndClient()
-	if err != nil {
-		return err
+// Run serves an isntance of the operator
+func (o *Operator) Run(ctx context.Context) error {
+	go o.informer.Start(ctx.Done())
+	if err := o.pool.Run(ctx, o.cfg.Threads); err != nil {
+		return fmt.Errorf("failed to run the pool controller: %s", err.Error())
 	}
-	o.pool = pool.NewController(ctx, blendedClient)
-	o.ip = ip.NewController(ctx, blendedClient)
-	o.ctx = ctx
-	return nil
-}
-
-func (o *Operator) initContextAndClient() (*opkit.Context, clientset.Interface, error) {
-	glog.V(2).Info("Initialize the operator context and client.")
-
-	config, err := k8sutil.GetRestConfig(o.kubeconfig)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get Kubernetes config. %+v", err)
-	}
-
-	client, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get Kubernetes client. %+v", err)
-	}
-
-	extensionsClient, err := apiextensionsclients.NewForConfig(config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to create Kubernetes API extension clientset. %+v", err)
-	}
-
-	blendedClient, err := clientset.NewForConfig(config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to create blended clientset. %+v", err)
-	}
-
-	ctx := &opkit.Context{
-		Clientset:             client,
-		APIExtensionClientset: extensionsClient,
-		Interval:              interval,
-		Timeout:               timeout,
-	}
-	return ctx, blendedClient, nil
-}
-
-func (o *Operator) initResources() error {
-	glog.V(2).Info("Initialize the CRD resources.")
-
-	ctx := opkit.Context{
-		Clientset:             o.ctx.Clientset,
-		APIExtensionClientset: o.ctx.APIExtensionClientset,
-		Interval:              interval,
-		Timeout:               timeout,
-	}
-
-	if err := opkit.CreateCustomResources(ctx, o.resources); err != nil {
-		return fmt.Errorf("Failed to create custom resource. %+v", err)
+	if err := o.ip.Run(ctx, o.cfg.Threads); err != nil {
+		return fmt.Errorf("failed to run the ip controller: %s", err.Error())
 	}
 	return nil
 }
 
-func (o *Operator) Run() error {
-	for {
-		err := o.initResources()
-		if err == nil {
-			break
-		}
-		glog.Errorf("Failed to init resources. %+v. retrying...", err)
-		<-time.After(initRetryDelay)
-	}
-
-	signalChan := make(chan os.Signal, 1)
-	stopChan := make(chan struct{})
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// start watching the custom resources
-	o.ip.StartWatch(v1.NamespaceAll, stopChan)
-	o.pool.StartWatch(v1.NamespaceAll, stopChan)
-
-	for {
-		select {
-		case <-signalChan:
-			glog.Infof("Shutdown signal received, exiting...")
-			close(stopChan)
-			return nil
-		}
-	}
+// Stop stops the main controller
+func (o *Operator) Stop() {
+	o.pool.Stop()
+	o.ip.Stop()
 }
