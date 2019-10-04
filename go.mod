@@ -16,6 +16,7 @@ require (
 )
 
 replace (
+	github.com/inwinstack/blended => github.com/xenolog/blended v0.0.0-20191002165057-1e450b38a231
 	k8s.io/api => k8s.io/api v0.0.0-20190620084959-7cf5895f2711
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20190620085554-14e95df34f1f
 	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190612205821-1799e75a0719

@@ -1,12 +1,14 @@
-VERSION_MAJOR ?= 0
-VERSION_MINOR ?= 7
-VERSION_BUILD ?= 0
-VERSION ?= v$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_BUILD)
+VERSION_MAJOR  ?= 0
+VERSION_MINOR  ?= 7
+VERSION_BUILD  ?= 0
+VERSION_TSTAMP ?= $(shell date -u +%Y%m%d-%H%M%S)
+VERSION_SHA    ?= $(shell git rev-parse --short HEAD)
+VERSION ?= v$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_BUILD)-$(VERSION_TSTAMP)-$(VERSION_SHA)
 
 GOOS ?= $(shell go env GOOS)
 
 ORG := github.com
-OWNER := inwinstack
+OWNER := xenolog
 REPOPATH ?= $(ORG)/$(OWNER)/ipam
 
 $(shell mkdir -p ./out)
@@ -15,7 +17,7 @@ $(shell mkdir -p ./out)
 build: out/controller
 
 .PHONY: out/controller
-out/controller: 
+out/controller:
 	GOOS=$(GOOS) go build \
 	  -ldflags="-s -w -X $(REPOPATH)/pkg/version.version=$(VERSION)" \
 	  -a -o $@ cmd/main.go

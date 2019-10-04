@@ -204,6 +204,8 @@ func (c *Controller) makeFailedStatus(ip *blendedv1.IP, e error) error {
 }
 
 func (c *Controller) allocate(ip *blendedv1.IP) error {
+	var allocatedIP string
+
 	ipCopy := ip.DeepCopy()
 	pool, err := c.blendedset.InwinstackV1().Pools().Get(ipCopy.Spec.PoolName, metav1.GetOptions{})
 	if err != nil {
@@ -223,15 +225,37 @@ func (c *Controller) allocate(ip *blendedv1.IP) error {
 				return c.makeFailedStatus(ipCopy, err)
 			}
 
-			pool.Status.AllocatedIPs = append(pool.Status.AllocatedIPs, ips[0])
+			if ipCopy.Spec.WantedAddress != "" {
+				// Specific IP address requested:
+				// check to duplicate allocation
+				if funk.ContainsString(pool.Status.AllocatedIPs, ipCopy.Spec.WantedAddress) {
+					return c.makeFailedStatus(
+						ipCopy,
+						fmt.Errorf("IP address '%s' can't be allocated twice from pool '%s'", ipCopy.Spec.WantedAddress, pool.Name),
+					)
+				}
+				// check is IP address in pool range
+				if !funk.ContainsString(ips, ipCopy.Spec.WantedAddress) {
+					return c.makeFailedStatus(
+						ipCopy,
+						fmt.Errorf("IP address '%s' is out of range %v for pool '%s'", ipCopy.Spec.WantedAddress, pool.Spec.Addresses, pool.Name),
+					)
+				}
+				allocatedIP = ipCopy.Spec.WantedAddress
+			} else {
+				allocatedIP = ips[0]
+			}
+
+			pool.Status.AllocatedIPs = append(pool.Status.AllocatedIPs, allocatedIP)
 			pool.Status.Allocatable = pool.Status.Capacity - len(pool.Status.AllocatedIPs)
+
 			if err := c.updatePool(pool); err != nil {
 				// If the pool failed to update, this res will requeue
 				return err
 			}
 
 			ipCopy.Status.Reason = ""
-			ipCopy.Status.Address = ips[0]
+			ipCopy.Status.Address = allocatedIP
 			ipCopy.Status.Phase = blendedv1.IPActive
 			k8sutil.AddFinalizer(&ipCopy.ObjectMeta, constants.CustomFinalizer)
 		}
