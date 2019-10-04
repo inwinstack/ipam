@@ -16,7 +16,7 @@
 
 set -e
 
-REPO_PATH="github.com/inwinstack/ipam"
+REPO_PATH="github.com/xenolog/ipam"
 
 if [[ -f $(which python 2>&1) ]]; then
 	PYTHON="python"
